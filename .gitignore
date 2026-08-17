@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# Estado / runtime (no debe subirse)
+config/
+*.activated
+*.log
+
+# Builds
+dist/
+build/
+*.spec
+
+# Secretos de entorno (nunca commitear)
+.env
+.env.*
+resolver_pack/
