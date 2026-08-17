@@ -23,13 +23,6 @@ Windows (PowerShell):
 irm https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.ps1 | iex
 ```
 
-Opción B — directo:
-
-```bash
-git clone https://github.com/warmarms2-bit/SyopS-Prep-Releases && cd SyopS-Prep-Releases
-python3 syops_wizard.py
-```
-
 Dependencias opcionales (torrent, etc.) se instalan con `--full` en el
 instalador.
 
