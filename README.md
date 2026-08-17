@@ -23,8 +23,7 @@ Windows (PowerShell):
 irm https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.ps1 | iex
 ```
 
-Dependencias opcionales (torrent, etc.) se instalan con `--full` en el
-instalador.
+No requiere instalar dependencias: el wizard corre con el Python estándar.
 
 ### Reabrir sin reinstalar
 

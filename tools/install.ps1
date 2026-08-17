@@ -5,22 +5,19 @@
 #    1. Verifica Python 3.8+ (si falta, lo instala con winget).
 #    2. Descarga el wizard directamente desde GitHub (repo público
 #       SyopS-Prep-Releases) y lo deja en ~/"SyopS Prep".
-#    3. Crea un venv aislado y, con el switch -Full, instala las
-#       dependencias opcionales (torrents).
+#    3. Crea un venv aislado. El wizard es stdlib puro: no requiere
+#       instalar dependencias extras.
 #    4. Lanza el wizard en la terminal.
 #
 #  Uso:
 #    irm https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.ps1 | iex
-#    irm https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.ps1 | iex -Args "-Full"
 #
 #  Variables:
 #    -BundleUrl   URL del zip a descargar (default: GitHub main)
-#    -Full        instala libtorrent
 #    $env:SYOPS_LINK_SERVER → URL de descarga/catálogo (opcional)
 # ═══════════════════════════════════════════════════════════════════════
 param(
-    [string]$BundleUrl = "https://github.com/warmarms2-bit/SyopS-Prep-Releases/archive/refs/heads/main.zip",
-    [switch]$Full
+    [string]$BundleUrl = "https://github.com/warmarms2-bit/SyopS-Prep-Releases/archive/refs/heads/main.zip"
 )
 $ErrorActionPreference = "Stop"
 
@@ -71,24 +68,11 @@ if (-not (Test-Path "syops_wizard.py")) {
     exit 1
 }
 
-# ── 3) venv + dependencias ────────────────────────────────────────────
+# ── 3) venv (stdlib puro, sin dependencias) ───────────────────────────
 if (-not (Test-Path ".venv")) {
     & $PY -m venv .venv
 }
-& ".venv\Scripts\python.exe" -m pip install --upgrade --quiet pip
-if ($Full) {
-    Write-Host "  Intentando instalar libtorrent (torrents)…" -ForegroundColor Yellow
-    & ".venv\Scripts\python.exe" -m pip install --quiet libtorrent
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  libtorrent listo (torrents disponibles)." -ForegroundColor Green
-    } else {
-        Write-Host "  Ojo: libtorrent no tiene binario para este Python — torrents desactivados." -ForegroundColor Yellow
-        Write-Host "  El resto del wizard funciona igual (catálogo + descargas directas)."
-    }
-} else {
-    Write-Host "  Modo mínimo: solo el estándar de Python (catálogo + descargas directas)."
-    Write-Host "    Para torrents: rerun con  -Full"
-}
+Write-Host "  Listo: el wizard corre con el Python estándar (sin dependencias extra)." -ForegroundColor Green
 
 # ── 3.5) Comando corto `syops` para reabrir sin reinstalar ────────────
 $ShimDir = Join-Path $env:USERPROFILE "syops"

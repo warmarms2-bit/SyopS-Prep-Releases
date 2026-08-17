@@ -6,13 +6,12 @@
 #    1. Verifica Python 3.8+ (si falta, avisa cómo instalarlo).
 #    2. Descarga el wizard directamente desde GitHub (repo público
 #       SyopS-Prep-Releases) y lo deja en ~/"SyopS Prep".
-#    3. Crea un venv aislado (~/"SyopS Prep"/.venv) y, con --full, instala
-#       las dependencias opcionales (torrents).
+#    3. Crea un venv aislado (~/"SyopS Prep"/.venv). El wizard es stdlib
+#       puro: no requiere instalar dependencias extras.
 #    4. Lanza el wizard en la terminal.
 #
 #  Uso:
 #    curl -fsSL https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.sh | bash
-#    curl -fsSL https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.sh | bash -s -- --full
 #
 #  Variables de entorno:
 #    SYOPS_BUNDLE_URL   URL del tarball a descargar (default: GitHub main)
@@ -22,10 +21,6 @@
 set -euo pipefail
 
 BUNDLE_URL="${SYOPS_BUNDLE_URL:-https://github.com/warmarms2-bit/SyopS-Prep-Releases/archive/refs/heads/main.tar.gz}"
-FULL=0
-for arg in "$@"; do
-  [ "$arg" = "--full" ] && FULL=1
-done
 
 # ── 1) Python ─────────────────────────────────────────────────────────
 need_python() {
@@ -70,24 +65,11 @@ if [ ! -f syops_wizard.py ]; then
   exit 1
 fi
 
-# ── 3) venv + dependencias ────────────────────────────────────────────
+# ── 3) venv (stdlib puro, sin dependencias) ───────────────────────────
 if [ ! -d .venv ]; then
   "${PY}" -m venv .venv
 fi
-# shellcheck disable=SC1091
-source .venv/bin/activate
-if [ "${FULL}" -eq 1 ]; then
-  echo "  ⧉ Intentando instalar libtorrent (torrents)…"
-  if python -m pip install --quiet libtorrent; then
-    echo "  ✔ libtorrent listo (torrents disponibles)."
-  else
-    echo "  ⚠ libtorrent no tiene binario para este Python; torrents desactivados."
-    echo "    El resto del wizard funciona igual (catálogo + descargas directas)."
-  fi
-else
-  echo "  ✔ Modo mínimo: solo el estándar de Python (catálogo + descargas directas)."
-  echo "    Para torrents: rerun con --full"
-fi
+echo "  ✔ Listo: el wizard corre con el Python estándar (sin dependencias extra)."
 
 # ── 3.5) Comando corto `syops` para reabrir sin reinstalar ────────────
 BIN_DIR="${HOME}/.local/bin"
@@ -109,4 +91,4 @@ echo "  ✔ Comando creado: reabrí el wizard cuando quieras con  syops"
 
 # ── 4) Ejecutar ───────────────────────────────────────────────────────
 echo "  ▶ Abriendo SyopS Prep…"
-exec python syops_wizard.py
+exec .venv/bin/python syops_wizard.py
