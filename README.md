@@ -11,23 +11,22 @@ aplicaciones según lo que tenga el equipo.
 
 ## Instalar y ejecutar
 
-Opción A — instalador (crea su propio entorno virtual):
+Opción A — instalador (baja el wizard y lo corre en la misma terminal):
 
 ```bash
-curl -fsSL https://<host>/syops-prep/install.sh | bash
-python3 syops_wizard.py
+curl -fsSL https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.sh | bash
 ```
 
-Windows:
+Windows (PowerShell):
 
 ```powershell
-irm https://<host>/syops-prep/install.ps1 | iex
-python syops_wizard.py
+irm https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.ps1 | iex
 ```
 
 Opción B — directo:
 
 ```bash
+git clone https://github.com/warmarms2-bit/SyopS-Prep-Releases && cd SyopS-Prep-Releases
 python3 syops_wizard.py
 ```
 

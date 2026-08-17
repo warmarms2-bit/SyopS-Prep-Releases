@@ -3,22 +3,23 @@
 #
 #  Qué hace:
 #    1. Verifica Python 3.8+ (si falta, lo instala con winget).
-#    2. Descarga el bundle del wizard (que DEBE incluir resolver_pack/).
+#    2. Descarga el wizard directamente desde GitHub (repo público
+#       SyopS-Prep-Releases) y lo deja en ~/"SyopS Prep".
 #    3. Crea un venv aislado y, con el switch -Full, instala las
-#       dependencias opcionales (torrents + resolvers de navegador).
+#       dependencias opcionales (torrents).
 #    4. Lanza el wizard en la terminal.
 #
 #  Uso:
-#    irm https://tu-servidor.com/install.ps1 | iex
-#    irm https://tu-servidor.com/install.ps1 | iex -Args "-Full"
+#    irm https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.ps1 | iex
+#    irm https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.ps1 | iex -Args "-Full"
 #
 #  Variables:
-#    -BundleUrl   URL del zip del bundle (default al servidor de venta)
-#    -Full        instala libtorrent/PySide6/cloudscraper
-#    $env:SYOPS_LINK_SERVER → URL /exec del Apps Script
+#    -BundleUrl   URL del zip a descargar (default: GitHub main)
+#    -Full        instala libtorrent
+#    $env:SYOPS_LINK_SERVER → URL de descarga/catálogo (opcional)
 # ═══════════════════════════════════════════════════════════════════════
 param(
-    [string]$BundleUrl = "https://tuservidor.com/syops-prep.zip",
+    [string]$BundleUrl = "https://github.com/warmarms2-bit/SyopS-Prep-Releases/archive/refs/heads/main.zip",
     [switch]$Full
 )
 $ErrorActionPreference = "Stop"
@@ -48,7 +49,7 @@ $ZIP = Join-Path $env:TEMP "syops-prep.zip"
 Remove-Item $DEST -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $ZIP -Force -ErrorAction SilentlyContinue
 
-Write-Host "  Bajo el wizard desde $BundleUrl …" -ForegroundColor Cyan
+Write-Host "  Bajo el wizard desde GitHub…" -ForegroundColor Cyan
 Invoke-WebRequest -Uri $BundleUrl -OutFile $ZIP -UseBasicParsing
 if ((Get-Item $ZIP).Length -eq 0) {
     Write-Host "✗ La descarga quedó vacía. Revisá -BundleUrl / SYOPS_BUNDLE_URL." -ForegroundColor Red
@@ -57,13 +58,17 @@ if ((Get-Item $ZIP).Length -eq 0) {
 Expand-Archive -Path $ZIP -DestinationPath $DEST -Force
 Remove-Item $ZIP -Force
 
+# GitHub empaqueta el repo en una carpeta madre: la aplanamos.
+$Inner = Get-ChildItem -Path $DEST -Directory | Select-Object -First 1
+if ($Inner) {
+    Get-ChildItem -Path $Inner.FullName | Move-Item -Destination $DEST -Force
+    Remove-Item $Inner -Force
+}
+
 Set-Location $DEST
 if (-not (Test-Path "syops_wizard.py")) {
-    Write-Host "✗ El zip no trae syops_wizard.py en la raíz." -ForegroundColor Red
+    Write-Host "✗ El paquete no trae syops_wizard.py en la raíz." -ForegroundColor Red
     exit 1
-}
-if (-not (Test-Path "resolver_pack")) {
-    Write-Host "⚠ Ojo: el bundle no incluye resolver_pack/ — el wizard correrá pero no resolverá hosts." -ForegroundColor Yellow
 }
 
 # ── 3) venv + dependencias ────────────────────────────────────────────
@@ -72,11 +77,11 @@ if (-not (Test-Path ".venv")) {
 }
 & ".venv\Scripts\python.exe" -m pip install --upgrade --quiet pip
 if ($Full) {
-    Write-Host "  Instalando dependencias opcionales (torrents + navegador)…" -ForegroundColor Yellow
-    & ".venv\Scripts\python.exe" -m pip install --quiet libtorrent PySide6 cloudscraper
+    Write-Host "  Instalando dependencias opcionales (torrents)…" -ForegroundColor Yellow
+    & ".venv\Scripts\python.exe" -m pip install --quiet libtorrent
 } else {
-    Write-Host "  Modo mínimo: sin dependencias extra (catálogo + descargas directas y Pixeldrain)."
-    Write-Host "    Para torrents/navegador: rerun con  -Full"
+    Write-Host "  Modo mínimo: solo el estándar de Python (catálogo + descargas directas)."
+    Write-Host "    Para torrents: rerun con  -Full"
 }
 
 # ── 4) Ejecutar (en la consola actual para que se vea el wizard) ──────

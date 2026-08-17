@@ -4,23 +4,24 @@
 #
 #  Qué hace:
 #    1. Verifica Python 3.8+ (si falta, avisa cómo instalarlo).
-#    2. Descarga el bundle del wizard (que DEBE incluir resolver_pack/).
-#    3. Crea un venv aislado (~/.venv) y, con --full, instala las
-#       dependencias opcionales (torrents + resolvers de navegador).
+#    2. Descarga el wizard directamente desde GitHub (repo público
+#       SyopS-Prep-Releases) y lo deja en ~/"SyopS Prep".
+#    3. Crea un venv aislado (~/"SyopS Prep"/.venv) y, con --full, instala
+#       las dependencias opcionales (torrents).
 #    4. Lanza el wizard en la terminal.
 #
 #  Uso:
-#    curl -fsSL https://tu-servidor.com/install.sh | bash
-#    curl -fsSL https://tu-servidor.com/install.sh | bash -s -- --full
+#    curl -fsSL https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.sh | bash
+#    curl -fsSL https://raw.githubusercontent.com/warmarms2-bit/SyopS-Prep-Releases/main/tools/install.sh | bash -s -- --full
 #
 #  Variables de entorno:
-#    SYOPS_BUNDLE_URL   URL del zip del bundle (default al servidor de venta)
-#    SYOPS_LINK_SERVER  URL /exec del Apps Script (si no la configurás acá,
-#                       el wizard te avisa al descargar)
+#    SYOPS_BUNDLE_URL   URL del tarball a descargar (default: GitHub main)
+#    SYOPS_LINK_SERVER  URL de descarga/catálogo (opcional; si no está,
+#                       el wizard corre en modo local sin descargas)
 # ═══════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
-BUNDLE_URL="${SYOPS_BUNDLE_URL:-https://tuservidor.com/syops-prep.zip}"
+BUNDLE_URL="${SYOPS_BUNDLE_URL:-https://github.com/warmarms2-bit/SyopS-Prep-Releases/archive/refs/heads/main.tar.gz}"
 FULL=0
 for arg in "$@"; do
   [ "$arg" = "--full" ] && FULL=1
@@ -45,32 +46,28 @@ else
   need_python
 fi
 
-# ── 2) Descargar el bundle ────────────────────────────────────────────
+# ── 2) Descargar el wizard desde GitHub ───────────────────────────────
 DEST="${HOME}/SyopS Prep"
-TMP_ZIP="$(mktemp -d)/syops-prep.zip"
+TMP_TGZ="$(mktemp -d)/syops-prep.tar.gz"
 
-echo "  ↓ Bajo el wizard desde ${BUNDLE_URL} …"
-curl -fsSL "${BUNDLE_URL}" -o "${TMP_ZIP}"
-if [ ! -s "${TMP_ZIP}" ]; then
+echo "  ↓ Bajo el wizard desde GitHub …"
+curl -fsSL "${BUNDLE_URL}" -o "${TMP_TGZ}"
+if [ ! -s "${TMP_TGZ}" ]; then
   echo "  ✗ La descarga quedó vacía. Revisá SYOPS_BUNDLE_URL." >&2
   exit 1
 fi
 
 rm -rf "${DEST}"
 mkdir -p "${DEST}"
-unzip -q "${TMP_ZIP}" -d "${DEST}"
-rm -f "${TMP_ZIP}"
+# GitHub empaqueta el repo en una carpeta madre: la quitamos con strip.
+tar -xz --strip-components=1 -C "${DEST}" -f "${TMP_TGZ}"
+rm -f "${TMP_TGZ}"
 
 cd "${DEST}"
 
 if [ ! -f syops_wizard.py ]; then
-  echo "  ✗ El zip no trae syops_wizard.py en la raíz. Deszip ármalo bien." >&2
+  echo "  ✗ El paquete no trae syops_wizard.py en la raíz." >&2
   exit 1
-fi
-if [ ! -d resolver_pack ]; then
-  echo "  ⚠ El bundle NO incluye resolver_pack/: el wizard correrá pero no
-       resolverá hosts (AkiraBox, Pixeldrain, …). Para venta incluí
-       resolver_pack/ en el zip." >&2
 fi
 
 # ── 3) venv + dependencias ────────────────────────────────────────────
@@ -80,13 +77,12 @@ fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 if [ "${FULL}" -eq 1 ]; then
-  echo "  ⧉ Instalando dependencias opcionales (torrents + navegador)…"
+  echo "  ⧉ Instalando dependencias opcionales (torrents)…"
   python -m pip install --quiet --upgrade pip
-  python -m pip install --quiet libtorrent PySide6 cloudscraper
+  python -m pip install --quiet libtorrent
 else
-  echo "  ✔ Modo mínimo: sin dependencias extra (sirve para catálogo +
-       descargas directas y Pixeldrain)."
-  echo "    Para torrents/resolvers de navegador: rerun con --full"
+  echo "  ✔ Modo mínimo: solo el estándar de Python (catálogo + descargas directas)."
+  echo "    Para torrents: rerun con --full"
 fi
 
 # ── 4) Ejecutar ───────────────────────────────────────────────────────
