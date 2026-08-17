@@ -1286,6 +1286,7 @@ class Wizard:
         print(_c("  Gracias por usar SyopS. El equipo quedó limpio.", _D))
 
     def run(self):
+        """Flujo lineal (como antes): inicio → guiado → fin."""
         try:
             self._sheets = self._make_sheets()
             self.load_activation()
@@ -1294,29 +1295,8 @@ class Wizard:
                 self.run_fullpack()
                 return
             self.show_inicio()
-            while True:
-                opcion = self._menu_principal()
-                if opcion == "exit":
-                    break
-                if opcion == "fullpack":
-                    self.run_fullpack(show_intro=False)
-                elif opcion == "preview":
-                    self.run_preview()
-                elif opcion == "rustdesk":
-                    self.run_rustdesk_from_menu()
-                elif opcion == "reportar":
-                    self.run_report_error()
-                else:
-                    self._run_guided()
-                # Después de una rama rápida se vuelve al menú directo;
-                # tras descargar (guiado/full) se pregunta con "s" por defecto.
-                if opcion in ("preview", "rustdesk", "reportar"):
-                    continue
-                if opcion in ("guided", "fullpack") and _yes_no(
-                        "\n¿Volver al menú principal?", default="s"):
-                    continue
-                break
-            # Al cerrar el wizard (cualquier rama), ofrecer autoeliminación.
+            self._run_guided()
+            # Al cerrar el wizard, ofrecer autoeliminación.
             self._offer_self_delete()
         except KeyboardInterrupt:
             print(_c("\n  Cancelado.", _YE))
