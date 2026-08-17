@@ -41,10 +41,14 @@ if (-not $PY) {
 }
 
 # ── 2) Descarga + descompresión ───────────────────────────────────────
-$DEST = Join-Path $HOME "SyopS Prep"
-$ZIP = Join-Path $env:TEMP "syops-prep.zip"
+$Profile = [System.Environment]::GetFolderPath("UserProfile")
+if ([string]::IsNullOrWhiteSpace($Profile)) { $Profile = $env:USERPROFILE }
+$DEST = [System.IO.Path]::Combine($Profile, "SyopS Prep")
+$ZIP = [System.IO.Path]::Combine($env:TEMP, "syops-prep.zip")
+$STAGE = [System.IO.Path]::Combine($env:TEMP, "syops-prep-stage")
 Remove-Item $DEST -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $ZIP -Force -ErrorAction SilentlyContinue
+Remove-Item $STAGE -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "  Bajo el wizard desde GitHub…" -ForegroundColor Cyan
 Invoke-WebRequest -Uri $BundleUrl -OutFile $ZIP -UseBasicParsing
@@ -52,19 +56,26 @@ if ((Get-Item $ZIP).Length -eq 0) {
     Write-Host "✗ La descarga quedó vacía. Revisá -BundleUrl / SYOPS_BUNDLE_URL." -ForegroundColor Red
     exit 1
 }
-Expand-Archive -Path $ZIP -DestinationPath $DEST -Force
+
+# Descomprimimos en TEMP (rutas absolutas, sin depender de la carpeta actual)
+# y aplanamos la carpeta madre del zip de GitHub hacia el destino final.
+Expand-Archive -Path $ZIP -DestinationPath $STAGE -Force
 Remove-Item $ZIP -Force
 
-# GitHub empaqueta el repo en una carpeta madre: la aplanamos.
-$Inner = Get-ChildItem -Path $DEST -Directory | Select-Object -First 1
-if ($Inner) {
-    Get-ChildItem -Path $Inner.FullName | Move-Item -Destination $DEST -Force
-    Remove-Item $Inner -Force
+New-Item -ItemType Directory -Force -Path $DEST | Out-Null
+$wrapper = Get-ChildItem -Path $STAGE -Directory | Select-Object -First 1
+if ($wrapper -and (Test-Path (Join-Path $wrapper.FullName "syops_wizard.py"))) {
+    Get-ChildItem -Path $wrapper.FullName -Force | Move-Item -Destination $DEST -Force
+    Remove-Item $wrapper.FullName -Recurse -Force -ErrorAction SilentlyContinue
+} else {
+    Get-ChildItem -Path $STAGE -Force | Move-Item -Destination $DEST -Force
 }
+Remove-Item $STAGE -Recurse -Force -ErrorAction SilentlyContinue
 
 Set-Location $DEST
 if (-not (Test-Path "syops_wizard.py")) {
-    Write-Host "✗ El paquete no trae syops_wizard.py en la raíz." -ForegroundColor Red
+    Write-Host "✗ No se encontró syops_wizard.py en $DEST . Estructura:" -ForegroundColor Red
+    Get-ChildItem $DEST | Select-Object Name | Format-Table
     exit 1
 }
 
