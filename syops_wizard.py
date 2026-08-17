@@ -21,6 +21,7 @@ from pathlib import Path
 
 from app_config import (
     APP_VERSION, SYOPS_DIR, DEFAULT_APPS, MAX_APPS, WHATSAPP_DISPLAY,
+    LINK_SERVER_URL,
 )
 from catalog.base import IS_MAC, IS_WIN
 from catalog.data import (
@@ -198,7 +199,8 @@ class Wizard:
         wizard resuelve localmente (Tier 1). El cliente no trae el catálogo;
         pide cada link al script, que valida la activación en Google Sheets.
         """
-        server = os.environ.get("SYOPS_LINK_SERVER", "").strip()
+        server = (os.environ.get("SYOPS_LINK_SERVER", "").strip()
+                  or LINK_SERVER_URL).strip()
         if not server:
             return None
         try:
@@ -876,10 +878,10 @@ class Wizard:
             print(_c("  Nada descargable con esa selección (instalación manual).", _YE))
             return 0
 
-        if not os.environ.get("SYOPS_LINK_SERVER", "").strip():
-            print(_c("  ⚠ Las descargas requieren SYOPS_LINK_SERVER (la URL del Google", _RD))
-            print(_c("    Apps Script con la hoja de links). Sin esa variable no hay", _RD))
-            print(_c("    catálogo de descargas en el cliente.", _RD))
+        server = (os.environ.get("SYOPS_LINK_SERVER", "").strip()
+                  or LINK_SERVER_URL).strip()
+        if not server:
+            print(_c("  ⚠ Sin backend de links configurado: no hay catálogo de descargas.", _RD))
             return 0
 
         from services.download_planner import plan_downloads

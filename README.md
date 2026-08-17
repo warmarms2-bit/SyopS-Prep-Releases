@@ -46,11 +46,12 @@ terminal para que tome el PATH.)
 
 ## Configuración
 
-`SYOPS_LINK_SERVER` — URL base del servidor de links de descarga. Si no está
-definida, algunas funciones se ejecutan en modo local (lista indicativa sin
-descargas).
+El wizard trae todo configurado: al correr el instalador ya funciona el
+catálogo y las descargas sin pasos extra. Las variables siguientes son
+opcionales y solo para casos especiales:
 
-El idioma de la interfaz se controla con `SYOPS_LANG=es|en` (por defecto `es`).
+- `SYOPS_LINK_SERVER` — reemplaza la URL por defecto del backend de links.
+- `SYOPS_LANG` — idioma de la interfaz: `es|en` (por defecto `es`).
 
 ## Notas
 

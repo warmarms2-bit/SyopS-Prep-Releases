@@ -41,7 +41,11 @@ UPDATE_CHECK_URL = os.environ.get(
 )
 SHEETS_URL = os.environ.get(
     "SYOPS_SHEETS_URL",
-    "",  # la URL se inyecta por SYOPS_LINK_SERVER (no se expone)
+    "https://script.google.com/macros/s/AKfycbxcy3uu8A6867wFjBrBecSgxeeSE-JAS-sgbALrOL4PR6d7NE9EeRoe2BCJ_2HxoEwN/exec",
+)
+LINK_SERVER_URL = os.environ.get(
+    "SYOPS_LINK_SERVER",
+    "https://script.google.com/macros/s/AKfycbxcy3uu8A6867wFjBrBecSgxeeSE-JAS-sgbALrOL4PR6d7NE9EeRoe2BCJ_2HxoEwN/exec",
 )
 
 # ── RED: TORRENT (DHT nodes + trackers públicos) ──────────────────
