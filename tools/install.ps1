@@ -77,8 +77,14 @@ if (-not (Test-Path ".venv")) {
 }
 & ".venv\Scripts\python.exe" -m pip install --upgrade --quiet pip
 if ($Full) {
-    Write-Host "  Instalando dependencias opcionales (torrents)…" -ForegroundColor Yellow
+    Write-Host "  Intentando instalar libtorrent (torrents)…" -ForegroundColor Yellow
     & ".venv\Scripts\python.exe" -m pip install --quiet libtorrent
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  libtorrent listo (torrents disponibles)." -ForegroundColor Green
+    } else {
+        Write-Host "  Ojo: libtorrent no tiene binario para este Python — torrents desactivados." -ForegroundColor Yellow
+        Write-Host "  El resto del wizard funciona igual (catálogo + descargas directas)."
+    }
 } else {
     Write-Host "  Modo mínimo: solo el estándar de Python (catálogo + descargas directas)."
     Write-Host "    Para torrents: rerun con  -Full"

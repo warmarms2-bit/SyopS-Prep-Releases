@@ -77,9 +77,13 @@ fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 if [ "${FULL}" -eq 1 ]; then
-  echo "  ⧉ Instalando dependencias opcionales (torrents)…"
-  python -m pip install --quiet --upgrade pip
-  python -m pip install --quiet libtorrent
+  echo "  ⧉ Intentando instalar libtorrent (torrents)…"
+  if python -m pip install --quiet libtorrent; then
+    echo "  ✔ libtorrent listo (torrents disponibles)."
+  else
+    echo "  ⚠ libtorrent no tiene binario para este Python; torrents desactivados."
+    echo "    El resto del wizard funciona igual (catálogo + descargas directas)."
+  fi
 else
   echo "  ✔ Modo mínimo: solo el estándar de Python (catálogo + descargas directas)."
   echo "    Para torrents: rerun con --full"
