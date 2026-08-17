@@ -19,6 +19,15 @@ import re
 import sys
 from pathlib import Path
 
+# En Windows la consola no pinta ANSI por defecto (sale `←[36m` como texto).
+# Esto activa el soporte VT de la consola (Win10+) para que los colores
+# se vean en vez de basura.
+if sys.platform == "win32":
+    try:
+        os.system("")
+    except Exception:
+        pass
+
 from app_config import (
     APP_VERSION, SYOPS_DIR, DEFAULT_APPS, MAX_APPS, WHATSAPP_DISPLAY,
     LINK_SERVER_URL,
@@ -354,7 +363,8 @@ class Wizard:
         _sep()
         for i, (key, info) in enumerate(cats, 1):
             label = _(info.get("label_key", key))
-            n = len(info.get("apps", []))
+            from app_flow.flujo import platform_apps
+            n = len(platform_apps(info.get("apps", []), IS_MAC, IS_WIN))
             print(f"  {_c(str(i).rjust(2), _CY)}. {label:<30} {_c(f'({n} programas)', _D)}")
         while True:
             r = _ask("Categoría")

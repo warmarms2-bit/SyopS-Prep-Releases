@@ -53,21 +53,14 @@ def _has_real_url(d: dict, key: str) -> bool:
 
 
 def _is_app_available_on_platform(app: str, platform: str) -> bool:
-    """Devuelve True si la app tiene al menos un link funcional para la plataforma."""
-    if platform == "mac":
-        if app in ADOBE_APPS:
-            return _adobe_has_mac_link(app)
-        return (_has_real_url(_DOWNLOAD_URLS_MAC, app)
-                or _has_real_url(_TORRENT_MAGNETS_MAC, app)
-                or _has_real_url(SWISSTRANSFER_URLS, app)
-                or _has_real_url(TORBOX_LINKS, app))
-    else:
-        if app in ADOBE_APPS:
-            return _has_real_url(_TORRENT_MAGNETS_WIN, app)
-        return (_has_real_url(_DOWNLOAD_URLS_WIN, app)
-                or _has_real_url(_TORRENT_MAGNETS_WIN, app)
-                or _has_real_url(SWISSTRANSFER_URLS, app)
-                or _has_real_url(TORBOX_LINKS, app))
+    """Devuelve True si la app estaba disponible para esa plataforma.
+
+    Usa la tabla estática de compatibilidad (catalog/plataformas.py), que
+    replica el filtro del catálogo original SIN exponer URLs de descarga
+    en el cliente.
+    """
+    from catalog.plataformas import is_compatible
+    return is_compatible(app, platform)
 
 
 # ── CONJUNTOS DE DISPONIBILIDAD POR PLATAFORMA ───────────────────
