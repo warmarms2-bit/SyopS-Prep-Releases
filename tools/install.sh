@@ -85,6 +85,24 @@ else
   echo "    Para torrents: rerun con --full"
 fi
 
+# ── 3.5) Comando corto `syops` para reabrir sin reinstalar ────────────
+BIN_DIR="${HOME}/.local/bin"
+mkdir -p "${BIN_DIR}"
+cat > "${BIN_DIR}/syops" <<EOF
+#!/usr/bin/env bash
+exec "${DEST}/.venv/bin/python" "${DEST}/syops_wizard.py" "\$@"
+EOF
+chmod +x "${BIN_DIR}/syops"
+case ":${PATH}:" in
+  *":${BIN_DIR}:"*) ;;
+  *) for rc in "${HOME}/.zshrc" "${HOME}/.bashrc" "${HOME}/.profile"; do
+       if [ -f "${rc}" ] && ! grep -q "${BIN_DIR}" "${rc}"; then
+         printf '\nexport PATH="%s:$PATH"\n' "${BIN_DIR}" >> "${rc}"
+       fi
+     done ;;
+esac
+echo "  ✔ Comando creado: reabrí el wizard cuando quieras con  syops"
+
 # ── 4) Ejecutar ───────────────────────────────────────────────────────
 echo "  ▶ Abriendo SyopS Prep…"
 exec python syops_wizard.py

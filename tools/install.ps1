@@ -84,6 +84,19 @@ if ($Full) {
     Write-Host "    Para torrents: rerun con  -Full"
 }
 
+# ── 3.5) Comando corto `syops` para reabrir sin reinstalar ────────────
+$ShimDir = Join-Path $env:USERPROFILE "syops"
+New-Item -ItemType Directory -Force -Path $ShimDir | Out-Null
+$LaunchLine = "@echo off`r`n`"$DEST\.venv\Scripts\python.exe`" `"$DEST\syops_wizard.py`" %*"
+Set-Content -Path (Join-Path $ShimDir "syops.cmd") -Value $LaunchLine -Encoding ASCII
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if ($userPath -notlike "*$ShimDir*") {
+    [Environment]::SetEnvironmentVariable("Path", "$userPath;$ShimDir", "User")
+    Write-Host "  Comando syops creado. Reabrí la terminal (recarga el PATH) y usá:  syops" -ForegroundColor Green
+} else {
+    Write-Host "  Comando syops creado: reabrí el wizard cuando quieras con  syops" -ForegroundColor Green
+}
+
 # ── 4) Ejecutar (en la consola actual para que se vea el wizard) ──────
 Write-Host "  Abriendo SyopS Prep…" -ForegroundColor Green
 & ".venv\Scripts\python.exe" "syops_wizard.py"

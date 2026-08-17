@@ -33,6 +33,17 @@ python3 syops_wizard.py
 Dependencias opcionales (torrent, etc.) se instalan con `--full` en el
 instalador.
 
+### Reabrir sin reinstalar
+
+El instalador crea el comando `syops`. En una terminal nueva:
+
+```bash
+syops
+```
+
+(Windows PowerShell: `syops`; si recién lo instalaste, cerrá y abrí la
+terminal para que tome el PATH.)
+
 ## Funciones
 
 - Revisión de hardware y sistema (CPU, RAM, disco, macOS/Windows)
