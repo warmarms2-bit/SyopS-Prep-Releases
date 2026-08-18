@@ -100,7 +100,11 @@ def apply_update(timeout: int = 120) -> tuple[bool, str]:
     Devuelve (ok, mensaje). No toca SYOPS_DIR (estado/descargas).
     """
     import tempfile as _tf
-    dest = Path(__file__).resolve().parent  # carpeta de la app (__.py)
+    # __file__ está en services/ → la raíz de la app es un nivel más arriba.
+    dest = Path(__file__).resolve().parent.parent
+    # Modo desarrollo: nunca autoactualizar un repo git (se rompería el árbol).
+    if (dest / ".git").exists() or dest.name.endswith("Wizard"):
+        return False, "Modo desarrollo: no se autoactualiza el repo."
     tmp = Path(_tf.mkdtemp(prefix="syops-upd-"))
     try:
         archive = tmp / ("main.zip" if IS_WIN else "main.tar.gz")
