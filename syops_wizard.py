@@ -1144,7 +1144,7 @@ class Wizard:
             print("   5) Reportar un error → enviar un problema a soporte")
             print("   0) Salir")
             _sep()
-            r = _ask("Elegí una opción [1]", default="1").strip().lower()
+            r = _ask("Elegí una opción", default="1").strip().lower()
             if r in ("1", "guiado"):
                 return "guided"
             if r in ("2", "full", "fullpack"):
