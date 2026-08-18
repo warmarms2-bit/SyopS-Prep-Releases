@@ -140,10 +140,15 @@ Remove-Item $ShimDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "SyopS eliminado. Cerrá y reabrí la terminal."
 exit 0
 '@
-$UninstallPsPath = Join-Path $ShimDir "eliminar-syops.ps1"
+# El helper .ps1 va con OTRO nombre (no puede llamarse igual que el comando:
+# si estuviera en el PATH con el mismo nombre, PowerShell lo resolvería
+# directamente y lo bloquearía la execution policy). Borramos también
+# cualquier restos del nombre viejo.
+$UninstallPsPath = Join-Path $ShimDir "syops-uninstall.ps1"
 Set-Content -Path $UninstallPsPath -Value $UninstallPs -Encoding UTF8
+Remove-Item (Join-Path $ShimDir "eliminar-syops.ps1") -Force -ErrorAction SilentlyContinue
 
-$UninstallCmd = "@echo off`r`npowershell -NoProfile -ExecutionPolicy Bypass -Command `"Get-Content -Raw '%~dp0eliminar-syops.ps1' | Invoke-Expression`"`r`n"
+$UninstallCmd = "@echo off`r`npowershell -NoProfile -ExecutionPolicy Bypass -Command `"Get-Content -Raw '%~dp0syops-uninstall.ps1' | Invoke-Expression`"`r`n"
 Set-Content -Path (Join-Path $ShimDir "eliminar-syops.cmd") -Value $UninstallCmd -Encoding ASCII
 Write-Host "  Comando creado: desinstalá con  eliminar-syops" -ForegroundColor Green
 
