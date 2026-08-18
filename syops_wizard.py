@@ -1224,11 +1224,36 @@ class Wizard:
             print(_c("  ✓ Backend de links disponible.", _GR))
         print()
 
+    def _check_update(self):
+        """Detecta y ofrece aplicar una versión más nueva (autoactualización)."""
+        try:
+            from services.auto_update import check_for_update, apply_update
+        except Exception:
+            return
+        hay_update, nueva, actual = check_for_update()
+        if not hay_update:
+            return
+        _sep()
+        print(_c(_B + "  ACTUALIZACIÓN DISPONIBLE", _YE))
+        print(f"  Versión actual: {actual} → nueva: {nueva}")
+        print("  La actualización no borra tus datos, activación ni descargas.")
+        _sep()
+        if _yes_no("¿Actualizar ahora?", default="n"):
+            ok, msg = apply_update()
+            print(_c(("  ✓ " if ok else "  ✗ ") + msg, _GR if ok else _RD))
+            if ok:
+                _ask("Presioná Enter para cerrar y reiniciar con la versión nueva")
+                raise SystemExit(0)
+        else:
+            print(_c("  Te quedás con la versión actual por ahora.", _D))
+        print()
+
     def run(self):
         """Flujo lineal (como antes): inicio → guiado → fin."""
         try:
             self._sheets = self._make_sheets()
             self.load_activation()
+            self._check_update()
             self._precheck_backend()
             # Licencia Full Pack en macOS: flujo dedicado (como la UI).
             if self._es_full_pack():
