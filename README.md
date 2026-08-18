@@ -36,6 +36,20 @@ syops
 (Windows PowerShell: `syops`; si recién lo instalaste, cerrá y abrí la
 terminal para que tome el PATH.)
 
+### Desinstalar
+
+Para quitar SyopS por completo (app, comando, estado y descargas):
+
+```bash
+eliminar-syops
+```
+
+Windows PowerShell:
+
+```powershell
+eliminar-syops
+```
+
 ## Funciones
 
 - Revisión de hardware y sistema (CPU, RAM, disco, macOS/Windows)
