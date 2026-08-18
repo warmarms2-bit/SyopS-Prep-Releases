@@ -517,21 +517,15 @@ class Wizard:
         if not only_compatible:
             # Sin método que cubra todas: mostrar todos con advertencia
             # (no se puede descargar la selección completa con uno solo).
-            from catalog.adobe_helpers import _adobe_apps_supported_by_method
             print(_c("  ⚠  Ningún método cubre TODAS las apps elegidas.", _RD))
             for i, m in enumerate(methods, 1):
-                covered = [a for a in adobe_apps
-                           if a in _adobe_apps_supported_by_method(m)]
-                print(f"  {_c(str(i).rjust(2), _CY)}. {m:<18} "
-                      f"{_c('cubre ' + str(len(covered)) + '/' + str(len(adobe_apps)), _D)}")
+                print(f"  {_c(str(i).rjust(2), _CY)}. {m:<18}")
                 self._show_method_card(m, indent="     ", apps=adobe_apps)
         else:
             for i, m in enumerate(only_compatible, 1):
                 info = ADOBE_METHODS[m]
                 tag = "  ✓ recomendado" if info.get("recommended") else ""
-                print(f"  {_c(str(i).rjust(2), _CY)}. {m:<18} "
-                      f"{_c('cubre ' + str(len(adobe_apps)) + '/' + str(len(adobe_apps)), _GR)}"
-                      f"{_c(tag, _GR)}")
+                print(f"  {_c(str(i).rjust(2), _CY)}. {m:<18}{_c(tag, _GR)}")
                 self._show_method_card(m, indent="     ", apps=adobe_apps)
         print()
         while True:
@@ -570,16 +564,6 @@ class Wizard:
             if btxt and not btxt.startswith("adobe."):
                 for ln in _wrap_lines(btxt, indent=indent, bullet="•"):
                     print(_c(ln, _D))
-        wkey = cfg.get("warning")
-        if wkey:
-            # El warning genérico de versiones ("Solo funciona con las
-            # versiones que trae") se reemplaza por las versiones concretas.
-            wtxt = self._clarify_app_mentions(_html_to_text(_(wkey)), apps)
-            if wtxt and not wtxt.startswith("adobe."):
-                wtxt = re.sub(r"\s*Solo funciona con las versiones que trae[^.]*\.?", "", wtxt).strip()
-            if wtxt and not wtxt.startswith("adobe."):
-                for ln in _wrap_lines(wtxt, indent=indent, bullet="⚠"):
-                    print(_c(ln, _YE))
         # Versiones disponibles del método para las apps elegidas.
         if apps and method != "activation_tool":
             from catalog.adobe_helpers import _adobe_best_link
