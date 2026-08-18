@@ -89,6 +89,29 @@ case ":${PATH}:" in
 esac
 echo "  ✔ Comando creado: reabrí el wizard cuando quieras con  syops"
 
+# ── 3.6) Comando `eliminar-syops` (desinstalar desde la terminal) ─────
+cat > "${BIN_DIR}/eliminar-syops" <<EOF
+#!/usr/bin/env bash
+echo "Esto eliminará SyopS del equipo:"
+echo "  • la app (${DEST})"
+echo "  • el comando syops y este desinstalador"
+echo "  • el estado, la activación y lo descargado (${HOME}/SYOPS)"
+read -r -p "¿Continuar? (s/n) [n]: " ok
+[ "\${ok:-n}" != "s" ] && [ "\${ok:-n}" != "S" ] && { echo "Cancelado."; exit 0; }
+rm -rf "${DEST}"
+rm -f "${BIN_DIR}/syops" "${BIN_DIR}/eliminar-syops"
+rm -rf "${HOME}/SYOPS"
+for rc in "\${HOME}/.zshrc" "\${HOME}/.bashrc" "\${HOME}/.profile"; do
+  if [ -f "\$rc" ]; then
+    tmp="\$(mktemp)"
+    grep -v '.local/bin' "\$rc" > "\$tmp" && mv "\$tmp" "\$rc"
+  fi
+done
+echo "✓ SyopS eliminado. Cerrá y reabrí la terminal."
+EOF
+chmod +x "${BIN_DIR}/eliminar-syops"
+echo "  ✔ Comando creado: desinstalá con  eliminar-syops"
+
 # ── 4) Ejecutar ───────────────────────────────────────────────────────
 echo "  ▶ Abriendo SyopS Prep…"
 exec .venv/bin/python syops_wizard.py

@@ -98,6 +98,26 @@ if ($userPath -notlike "*$ShimDir*") {
     Write-Host "  Comando syops creado: reabrí el wizard cuando quieras con  syops" -ForegroundColor Green
 }
 
+# ── 3.6) Comando `eliminar-syops` (desinstalar) ───────────────────────
+$UninstallCmd = @"
+@echo off
+echo Se eliminará SyopS del equipo: la app, el comando syops, el estado y las descargas.
+set /p ok="Continuar? (s/n) [n]: "
+if /i not "%ok%"=="s" ( echo Cancelado. & exit /b 0 )
+
+rem Quitar el PATH del usuario (directorio del shim)
+powershell -NoProfile -Command "$fp=[Environment]::GetEnvironmentVariable('Path','User'); $np=($fp -split ';' | Where-Object { $_ -and $_ -ne \$env:USERPROFILE + '\syops' }) -join ';'; [Environment]::SetEnvironmentVariable('Path',$np,'User')"
+
+rmdir /s /q "%USERPROFILE%\SyopS Prep"
+rmdir /s /q "%USERPROFILE%\SYOPS" 2>nul
+if exist "%LOCALAPPDATA%\SYOPS" rmdir /s /q "%LOCALAPPDATA%\SYOPS"
+cd /d "%USERPROFILE%"
+rmdir /s /q "%USERPROFILE%\syops"
+echo SyopS eliminado. Cerra y reabri la terminal.
+"@
+Set-Content -Path (Join-Path $ShimDir "eliminar-syops.cmd") -Value $UninstallCmd -Encoding ASCII
+Write-Host "  Comando creado: desinstalá con  eliminar-syops" -ForegroundColor Green
+
 # ── 4) Ejecutar (en la consola actual para que se vea el wizard) ──────
 Write-Host "  Abriendo SyopS Prep…" -ForegroundColor Green
 & ".venv\Scripts\python.exe" "syops_wizard.py"
