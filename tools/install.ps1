@@ -109,22 +109,41 @@ if ($userPath -notlike "*$ShimDir*") {
 }
 
 # ── 3.6) Comando `eliminar-syops` (desinstalar) ───────────────────────
-$UninstallCmd = @"
-@echo off
-echo Se eliminará SyopS del equipo: la app, el comando syops, el estado y las descargas.
-set /p ok="Continuar? (s/n) [n]: "
-if /i not "%ok%"=="s" ( echo Cancelado. & exit /b 0 )
+# El desinstalador real es un .ps1 aparte (escrito en single-quotes para que
+# PowerShell NO expanda $_ / $env), y el .cmd solo lo invoca. Así evitamos
+# la ruptura de sintaxis al embutir PowerShell inline en un batch.
+$UninstallPs = @'
+$DEST = Join-Path $env:USERPROFILE "SyopS Prep"
+$ShimDir = Join-Path $env:USERPROFILE "syops"
 
-rem Quitar el PATH del usuario (directorio del shim)
-powershell -NoProfile -Command "$fp=[Environment]::GetEnvironmentVariable('Path','User'); $np=($fp -split ';' | Where-Object { $_ -and $_ -ne \$env:USERPROFILE + '\syops' }) -join ';'; [Environment]::SetEnvironmentVariable('Path',$np,'User')"
+Write-Host ""
+$ok = Read-Host "Eliminar SyopS del equipo (app, comando syops, activacion y descargas)? Esta accion no se puede deshacer. (s/n) [n]"
+if ($ok.Trim().ToLower() -ne "s") { Write-Host "Cancelado."; exit 0 }
 
-rmdir /s /q "%USERPROFILE%\SyopS Prep"
-rmdir /s /q "%USERPROFILE%\SYOPS" 2>nul
-if exist "%LOCALAPPDATA%\SYOPS" rmdir /s /q "%LOCALAPPDATA%\SYOPS"
-cd /d "%USERPROFILE%"
-rmdir /s /q "%USERPROFILE%\syops"
-echo SyopS eliminado. Cerra y reabri la terminal.
-"@
+Write-Host "  Eliminando $DEST ..."
+Remove-Item $DEST -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host "  Eliminando estado/descargas ..."
+Remove-Item (Join-Path $env:USERPROFILE "SYOPS") -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $env:LOCALAPPDATA "SYOPS") -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host "  Quitando el comando del PATH ..."
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if ($userPath) {
+    $parts = @($userPath -split ";" | Where-Object { $_ -and $_.Trim().TrimEnd("\") -ne $ShimDir.TrimEnd("\") })
+    [Environment]::SetEnvironmentVariable("Path", ($parts -join ";"), "User")
+}
+
+Write-Host "  Eliminando shims ..."
+Remove-Item $ShimDir -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host "SyopS eliminado. Cerrá y reabrí la terminal."
+exit 0
+'@
+$UninstallPsPath = Join-Path $ShimDir "eliminar-syops.ps1"
+Set-Content -Path $UninstallPsPath -Value $UninstallPs -Encoding UTF8
+
+$UninstallCmd = "@echo off`r`npowershell -NoProfile -ExecutionPolicy Bypass -File `"%~dp0eliminar-syops.ps1`"`r`n"
 Set-Content -Path (Join-Path $ShimDir "eliminar-syops.cmd") -Value $UninstallCmd -Encoding ASCII
 Write-Host "  Comando creado: desinstalá con  eliminar-syops" -ForegroundColor Green
 
