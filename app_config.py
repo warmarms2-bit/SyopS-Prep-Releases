@@ -29,10 +29,27 @@ WHATSAPP_NUMBER = "51955242837"
 import os
 import sys
 from pathlib import Path
-if sys.platform == "win32":
-    SYOPS_DIR = Path(f"{os.environ.get('SystemDrive', 'C:')}/SYOPS")
-else:
-    SYOPS_DIR = Path(os.path.expanduser("~/SYOPS"))
+
+
+def _resolve_syops_dir() -> Path:
+    """Directorio de estado/descargas.
+
+    En Windows se intenta C:\\SYOPS (compartido con la UI); si la raíz del
+    disco no es escribible (usuario sin permisos de admin), se cae a un
+    directorio del usuario para no romper el wizard con PermissionError.
+    """
+    if sys.platform == "win32":
+        candidate = Path(f"{os.environ.get('SystemDrive', 'C:')}/SYOPS")
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            return candidate
+        except OSError:
+            base = os.environ.get("LOCALAPPDATA") or str(Path.home())
+            return Path(base) / "SYOPS"
+    return Path(os.path.expanduser("~/SYOPS"))
+
+
+SYOPS_DIR = _resolve_syops_dir()
 
 # ── URLs EXTERNAS (sobreescribibles por env vars) ──────────────────
 UPDATE_CHECK_URL = os.environ.get(
