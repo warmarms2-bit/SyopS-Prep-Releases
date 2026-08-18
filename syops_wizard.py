@@ -834,6 +834,7 @@ class Wizard:
                 "expirado": "activacion.codigo_expirado",
                 "expired": "activacion.codigo_expirado",
                 "not_found": "activacion.codigo_no_en_sheets",
+                "firma_invalida": "activacion.codigo_invalido",
             }
             if status in msgs:
                 print(_c(f"  ✗ {_(msgs[status])}", _RD))
