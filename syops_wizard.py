@@ -709,7 +709,10 @@ class Wizard:
 
         app_tools = {}
         for app in app_methods:
-            if self.adobe_method and app in ADOBE_APPS:
+            # Las apps Adobe no llevan tools por app: si hay método, las
+            # tools reales del método ya se listaron arriba; si no hay
+            # método (Windows/GenP) se descargan frescas por torrent.
+            if app in ADOBE_APPS:
                 continue
             for tool in _app_tools_for_app(app):
                 app_tools.setdefault(app, []).append(tool.get("name", tool))
