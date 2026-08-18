@@ -321,13 +321,13 @@ class Wizard:
         from app_banner import BANNER
         print(_c(_B + "   " + BANNER.replace("\n", "\n   "), _CY))
         print(_c(_B + "   SyopS", _CY) + _c(f"  v{APP_VERSION}", _D))
-        print(_c("   Asistente de instalación de software (terminal)", _D))
+        print(_c("   Asistente de descarga de software (terminal)", _D))
         _sep()
         print("  Este asistente te guía igual que la aplicación:")
         print("  1. Diagnóstico del sistema")
         print("  2. Elegir categoría y programas")
         print("  3. Responder las preguntas")
-        print("  4. Descargar e instalar")
+        print("  4. Descargar los archivos")
         print()
         _ask("Presioná Enter para comenzar", default="")
         print()
@@ -974,7 +974,7 @@ class Wizard:
         return len(tasks) - len(failed)
 
     # ── Paso 7: final ──────────────────────────────────────────────
-    def show_final(self):
+    def show_final(self, output: Path | None = None):
         _sep()
         print(_c(_B + "  ¡LISTO!", _GR))
         _sep()
@@ -990,6 +990,13 @@ class Wizard:
             print()
             print(_c("  Windows: si Defender marca un archivo, agregá la "
                      "carpeta de descarga a la whitelist.", _D))
+        print()
+        # La instalación es MANUAL: la asistencia (RustDesk) se ofrece recién
+        # acá, después de la descarga, para ayudar a instalar.
+        if self.motor.tiene_descargable() and output and _yes_no(
+                "¿Querés que soporte te ayude a instalar por videollamada "
+                "(RustDesk)?", default="n"):
+            self.run_rustdesk(output)
         print()
         print(_c("  Gracias por usar SyopS Prep.", _D))
 
@@ -1068,8 +1075,6 @@ class Wizard:
             return
         output = SYOPS_DIR / "adobe_full_pack"
         output.mkdir(parents=True, exist_ok=True)
-        if not self.run_rustdesk(output):
-            return
         from services.download_planner import plan_downloads
         plan = plan_downloads([], output, "aio_macked", adobe_fullpack=True,
                               link_provider=self._link_provider(),
@@ -1077,7 +1082,7 @@ class Wizard:
         self._run_tasks(plan.tasks, output)
         self._send_completed()
         self._mark_activation_used()
-        self.show_final()
+        self.show_final(output)
 
     # ── Efectos (protocolo app_flow.Efectos) ──────────────────────
     # El motor decide QUÉ efecto se necesita (efectos_necesarios); estas
@@ -1122,8 +1127,6 @@ class Wizard:
             if nombre == "instrucciones":
                 self.instrucciones(output_dir)
             elif nombre == "descargar":
-                if not self.run_rustdesk(output_dir):
-                    return False
                 n_ok = self.descargar(output_dir)
             elif nombre == "whitelist":
                 self.whitelist()
@@ -1198,7 +1201,7 @@ class Wizard:
         output.mkdir(parents=True, exist_ok=True)
         if not self._ejecutar_efectos(output):
             return
-        self.show_final()
+        self.show_final(output)
 
     def run_preview(self):
         """Rama 3: solo ver la selección y el plan, sin activar ni descargar."""
