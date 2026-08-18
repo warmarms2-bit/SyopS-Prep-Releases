@@ -73,13 +73,20 @@ def _sep(char="═", color=_CY):
     print(_c(char * 64, color))
 
 
+class WizardCancelled(Exception):
+    """El usuario canceló el proceso (tecla 'q' o sinónimos)."""
+
+
 def _ask(prompt, default=None):
     suffix = f" [{default}]" if default is not None else ""
     try:
-        return input(f"{_c('» ', _GR)}{prompt}{suffix}: ").strip() or (default or "")
+        raw = input(f"{_c('» ', _GR)}{prompt}{suffix}: ").strip()
     except (EOFError, KeyboardInterrupt):
         print()
         raise SystemExit(1)
+    if raw.lower() in ("q", "salir", "exit", "quit"):
+        raise WizardCancelled()
+    return raw or (default or "")
 
 
 def _yes_no(prompt, default="s"):
@@ -811,7 +818,7 @@ class Wizard:
         print(_c("  El código vence a los pocos minutos; si se agota, pedí otro por WhatsApp.", _D))
         t0 = _time.time()
         while True:
-            code = _ask("Código de activación (o 'cancelar')")
+            code = _ask("Código de activación (o 'q' para cancelar)")
             if code.lower() in ("cancelar", "salir"):
                 return
             if not code:
@@ -1263,6 +1270,9 @@ class Wizard:
             self._run_guided()
             # Al cerrar el wizard, ofrecer autoeliminación.
             self._offer_self_delete()
+        except WizardCancelled:
+            print(_c("\n  Cancelado.", _YE))
+            sys.exit(0)
         except KeyboardInterrupt:
             print(_c("\n  Cancelado.", _YE))
             sys.exit(1)
