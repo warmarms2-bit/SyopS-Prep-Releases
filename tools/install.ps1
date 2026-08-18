@@ -62,14 +62,24 @@ if ((Get-Item $ZIP).Length -eq 0) {
 Expand-Archive -Path $ZIP -DestinationPath $STAGE -Force
 Remove-Item $ZIP -Force
 
-New-Item -ItemType Directory -Force -Path $DEST | Out-Null
 $wrapper = Get-ChildItem -Path $STAGE -Directory | Select-Object -First 1
 if ($wrapper -and (Test-Path (Join-Path $wrapper.FullName "syops_wizard.py"))) {
-    Get-ChildItem -Path $wrapper.FullName -Force | Move-Item -Destination $DEST -Force
-    Remove-Item $wrapper.FullName -Recurse -Force -ErrorAction SilentlyContinue
+    $SrcRoot = $wrapper.FullName
 } else {
-    Get-ChildItem -Path $STAGE -Force | Move-Item -Destination $DEST -Force
+    $SrcRoot = $STAGE
 }
+
+New-Item -ItemType Directory -Force -Path $DEST | Out-Null
+# Movemos cada item del paquete a $DEST reemplazando lo que ya exista
+# (para que no falle Move-Item con "the file already exists").
+Get-ChildItem -Path $SrcRoot -Force | ForEach-Object {
+    $target = Join-Path $DEST $_.Name
+    if (Test-Path $target) {
+        Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    Move-Item -Path $_.FullName -Destination $DEST -Force
+}
+Remove-Item $wrapper.FullName -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $STAGE -Recurse -Force -ErrorAction SilentlyContinue
 
 Set-Location $DEST
