@@ -20,13 +20,22 @@ import sys
 from pathlib import Path
 
 # En Windows la consola no pinta ANSI por defecto (sale `←[36m` como texto).
-# Esto activa el soporte VT de la consola (Win10+) para que los colores
-# se vean en vez de basura.
-if sys.platform == "win32":
+# Esto activa el soporte VT de la consola (Win10+); si no se puede (consola
+# vieja o salida redirigida a pipe), se desactivan los colores y se imprime
+# texto limpio.
+def _setup_color() -> bool:
+    if not sys.stdout.isatty():
+        return False
+    if sys.platform != "win32":
+        return True
     try:
         os.system("")
+        return True
     except Exception:
-        pass
+        return False
+
+
+_COLOR_OK = _setup_color()
 
 from app_config import (
     APP_VERSION, SYOPS_DIR, DEFAULT_APPS, MAX_APPS, WHATSAPP_DISPLAY,
@@ -55,6 +64,8 @@ _R = "\033[0m"
 
 
 def _c(text, color):
+    if not _COLOR_OK:
+        return re.sub(r"\x1b\[[0-9;]*m", "", text) if text else text
     return f"{color}{text}{_R}"
 
 
@@ -1119,33 +1130,6 @@ class Wizard:
                     self.reportar("completed")
         return True
 
-    def _menu_principal(self):
-        """Menú de ramas: guiado, Full Pack, vista, RustDesk, reportar o salir."""
-        while True:
-            _sep()
-            print(_c(_B + "  ¿QUÉ QUERÉS HACER?", _CY))
-            print("   1) Asistente guiado  → elegís programas y descargás")
-            print("   2) Adobe Full Pack   → descarga todo el paquete Adobe")
-            print("   3) Solo ver          → elegís y ves el plan, sin descargar")
-            print("   4) Soporte remoto    → instalar RustDesk")
-            print("   5) Reportar un error → enviar un problema a soporte")
-            print("   0) Salir")
-            _sep()
-            r = _ask("Elegí una opción", default="1").strip().lower()
-            if r in ("1", "guiado"):
-                return "guided"
-            if r in ("2", "full", "fullpack"):
-                return "fullpack"
-            if r in ("3", "vista", "preview", "ver"):
-                return "preview"
-            if r in ("4", "rustdesk", "soporte"):
-                return "rustdesk"
-            if r in ("5", "error", "reportar"):
-                return "reportar"
-            if r in ("0", "salir", "exit", "q"):
-                return "exit"
-            print(_c("  Opción inválida.", _RD))
-
     def _seleccion(self) -> bool:
         """Selección multi-categoría compartida (guiado / vista)."""
         self.show_scan()
@@ -1187,60 +1171,6 @@ class Wizard:
             return
         self.show_final(output)
 
-    def run_preview(self):
-        """Rama 3: solo ver la selección y el plan, sin activar ni descargar."""
-        if not self._seleccion():
-            return
-        print(_c("  ─● Modo vista: NO se descarga nada ni se pide activación.", _YE))
-        print(_c("    Para descargar después: abrí de nuevo y elegí "
-                 "'Asistente guiado'.", _D))
-        provider = self._link_provider()
-        if provider is None:
-            print(_c("    (sin SYOPS_LINK_SERVER: el plan de links se arma al "
-                     "descargar)", _D))
-            return
-        try:
-            from services.seleccion_logic import build_download_apps
-            from services.download_planner import plan_downloads
-            download_apps = build_download_apps(self.selected_apps,
-                                                self.office_sub_apps,
-                                                self.adobe_patched)
-            output = SYOPS_DIR / ("vista_" + (self.adobe_method or "http"))
-            output.mkdir(parents=True, exist_ok=True)
-            plan = plan_downloads(download_apps, output,
-                                  self.adobe_method or "macked",
-                                  link_provider=provider,
-                                  platform="mac" if IS_MAC else "win")
-            for w in plan.warnings:
-                print(_c(f"  ⚠ {w}", _YE))
-            for t in plan.tasks:
-                print(_c(f"  • {t.name}  [{t.method}]", _GR))
-            print(_c(f"  ({len(plan.tasks)} archivo(s) listados — sin bajar)", _D))
-        except Exception as exc:
-            print(_c(f"  ⚠ No se pudo listar el plan ({type(exc).__name__}).", _RD))
-
-    def run_rustdesk_from_menu(self):
-        """Rama 4: instalar RustDesk (soporte remoto) como acción única."""
-        output = SYOPS_DIR / "rustdesk"
-        output.mkdir(parents=True, exist_ok=True)
-        self.run_rustdesk(output)
-
-    def run_report_error(self):
-        """Rama 5: reportar un problema a la hoja 'Errores'."""
-        if not self._sheets or not getattr(self._sheets, "url", ""):
-            print(_c("  No hay backend conectado (SYOPS_LINK_SERVER).",
-                     _RD))
-            return
-        msg = _ask("Describí el problema", default="")
-        if not msg:
-            print(_c("  Reporte cancelado.", _D))
-            return
-        try:
-            self._sheets.send_error(msg)
-            print(_c("  ✓ Reporte enviado a soporte.", _GR))
-        except Exception as exc:
-            print(_c(f"  ✗ No se pudo enviar ({type(exc).__name__}).", _RD))
-
     def _offer_self_delete(self):
         """Al salir, ofrece borrar SyopS del sistema (wizard + activación +
         descargas). Nunca toca un repo git (modo desarrollo).
@@ -1272,11 +1202,30 @@ class Wizard:
                 pass
         print(_c("  Gracias por usar SyopS. El equipo quedó limpio.", _D))
 
+    def _precheck_backend(self):
+        """Comprueba temprano si el backend de links responde (aviso a tiempo)."""
+        import urllib.request as _urlreq
+        server = (os.environ.get("SYOPS_LINK_SERVER", "").strip()
+                  or LINK_SERVER_URL).strip()
+        if not server:
+            return
+        try:
+            with _urlreq.urlopen(server, timeout=10) as resp:
+                resp.read(64)
+        except Exception:
+            print(_c("  ⚠ No se pudo contactar al backend de links: las "
+                     "descargas fallarán.", _YE))
+            print(_c("    Revisá tu conexión a internet y reintentá.", _YE))
+        else:
+            print(_c("  ✓ Backend de links disponible.", _GR))
+        print()
+
     def run(self):
         """Flujo lineal (como antes): inicio → guiado → fin."""
         try:
             self._sheets = self._make_sheets()
             self.load_activation()
+            self._precheck_backend()
             # Licencia Full Pack en macOS: flujo dedicado (como la UI).
             if self._es_full_pack():
                 self.run_fullpack()
