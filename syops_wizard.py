@@ -794,7 +794,7 @@ class Wizard:
         _sep()
         print(f"  Enviá tu Cliente ID ({self.client_id}) por WhatsApp a "
               f"{_c(_B + WHATSAPP_DISPLAY, _GR)}")
-        print(_c("  Tenés 60 segundos para ingresar el código (o escribí 'cancelar').", _D))
+        print(_c("  El código vence a los pocos minutos; si se agota, pedí otro por WhatsApp.", _D))
         t0 = _time.time()
         while True:
             code = _ask("Código de activación (o 'cancelar')")
@@ -980,7 +980,7 @@ class Wizard:
         if self.motor.tiene_descargable() and output and _yes_no(
                 "¿Querés que soporte te ayude a instalar por videollamada "
                 "(RustDesk)?", default="n"):
-            self.run_rustdesk(output)
+            self.run_rustdesk(output, confirm=False)
         print()
         print(_c("  Gracias por usar SyopS Prep.", _D))
 
@@ -990,7 +990,7 @@ class Wizard:
         """La licencia adobe_full_pack descarga el paquete completo de Adobe."""
         return self.motor.es_full_pack
 
-    def run_rustdesk(self, output_dir: Path) -> bool:
+    def run_rustdesk(self, output_dir: Path, confirm: bool = True) -> bool:
         """Escanea, pregunta, descarga e instala RustDesk sin Qt.
 
         Devuelve True si se puede continuar (instalado, ya presente o el
@@ -1005,7 +1005,7 @@ class Wizard:
             print(_c("  ✓ RustDesk ya está instalado. Se continúa.", _GR))
             return True
         print("  RustDesk permite que soporte te ayude de forma remota.")
-        if not _yes_no("¿Querés instalar RustDesk?", default="s"):
+        if confirm and not _yes_no("¿Querés instalar RustDesk?", default="s"):
             print(_c("  RustDesk omitido. Podés continuar sin soporte remoto.", _D))
             return True
 
