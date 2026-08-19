@@ -80,21 +80,37 @@ class WizardCancelled(Exception):
 def _readline():
     """Lee una línea del teclado.
 
-    Si el wizard se lanzó desde un one-liner (`curl | bash`) en macOS/linux,
-    el stdin quedó como una tubería cerrada (EOF) al llegar aquí. En ese caso
-    se reabre directamente la terminal real (/dev/tty) para poder seguir
-    leyendo Enter y el teclado. En Windows no aplica (el one-liner corre en
-    la misma consola).
+    Casos:
+    • stdin es la terminal (lo normal)         → lee de stdin.
+    • one-liner `curl | bash` en macOS/linux   → stdin quedó como tubería
+      cerrada (EOF); se reabre la terminal real (/dev/tty) para poder leer
+      Enter y el teclado.
+    • stdin no es terminal ni tubería (/dev/null, archivo, lanzado en
+      segundo plano)                           → se lee stdin: llega EOF y
+      _ask cierra el wizard limpio (no se cuelga esperando /dev/tty).
+    En Windows el one-liner corre en la misma consola, así que stdin sirve.
     """
-    if sys.stdin.isatty():
-        return sys.stdin.readline()
-    if sys.platform != "win32":
-        try:
+    try:
+        if sys.stdin.isatty():
+            line = sys.stdin.readline()
+        elif sys.platform != "win32" and _stdin_is_pipe():
             with open("/dev/tty", "r") as tty:
-                return tty.readline()
-        except OSError:
-            pass
-    return sys.stdin.readline()
+                line = tty.readline()
+        else:
+            line = sys.stdin.readline()
+    except OSError:
+        line = sys.stdin.readline()
+    if line == "":
+        raise EOFError
+    return line
+
+
+def _stdin_is_pipe():
+    try:
+        import stat
+        return stat.S_ISFIFO(os.fstat(0).st_mode)
+    except OSError:
+        return False
 
 
 def _ask(prompt, default=None):
