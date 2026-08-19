@@ -117,15 +117,11 @@ $DEST = Join-Path $env:USERPROFILE "SyopS Prep"
 $ShimDir = Join-Path $env:USERPROFILE "syops"
 
 Write-Host ""
-$ok = Read-Host "Eliminar SyopS del equipo (app, comando syops, activacion y descargas)? Esta accion no se puede deshacer. (s/n) [n]"
+$ok = Read-Host "Eliminar SyopS del equipo (app y comando syops)? Se conserva el estado, la activacion y lo descargado. (s/n) [n]"
 if ($ok.Trim().ToLower() -ne "s") { Write-Host "Cancelado."; exit 0 }
 
 Write-Host "  Eliminando $DEST ..."
 Remove-Item $DEST -Recurse -Force -ErrorAction SilentlyContinue
-
-Write-Host "  Eliminando estado/descargas ..."
-Remove-Item (Join-Path $env:USERPROFILE "SYOPS") -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item (Join-Path $env:LOCALAPPDATA "SYOPS") -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "  Quitando el comando del PATH ..."
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")

@@ -120,14 +120,13 @@ cat > "${BIN_DIR}/eliminar-syops" <<EOF
 echo "Esto eliminará SyopS del equipo:"
 echo "  • la app (${DEST})"
 echo "  • el comando syops y este desinstalador"
-echo "  • el estado, la activación y lo descargado (${HOME}/SYOPS)"
+echo "  (se conserva el estado, la activación y lo descargado en ${HOME}/SYOPS)"
 read -r -p "¿Continuar? (s/n) [n]: " ok
 [ "\${ok:-n}" != "s" ] && [ "\${ok:-n}" != "S" ] && { echo "Cancelado."; exit 0; }
 rm -rf "${DEST}"
 rm -f "${BIN_DIR}/syops" "${BIN_DIR}/eliminar-syops"
 rm -f /opt/homebrew/bin/syops /opt/homebrew/bin/eliminar-syops
 rm -f /usr/local/bin/syops /usr/local/bin/eliminar-syops
-rm -rf "${HOME}/SYOPS"
 for rc in "\${HOME}/.zshrc" "\${HOME}/.bashrc" "\${HOME}/.profile"; do
   if [ -f "\$rc" ]; then
     tmp="\$(mktemp)"
