@@ -24,7 +24,7 @@ class GoogleLinkProvider:
     """Cliente del endpoint `get_link` de Google Apps Script."""
 
     def __init__(self, script_url: str, client_id: str, hwid: str, code: str,
-                 timeout: int = 25):
+                 timeout: int = 90):
         self.script_url = (script_url or "").strip()
         self.client_id = client_id
         self.hwid = hwid

@@ -1,4 +1,4 @@
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.3.0"
 WHATSAPP_DISPLAY = "+51 955 242 837"
 
 # ── CONFIGURACION GENERAL ─────────────────────────────────────────
@@ -58,11 +58,11 @@ UPDATE_CHECK_URL = os.environ.get(
 )
 SHEETS_URL = os.environ.get(
     "SYOPS_SHEETS_URL",
-    "https://script.google.com/macros/s/AKfycbxcy3uu8A6867wFjBrBecSgxeeSE-JAS-sgbALrOL4PR6d7NE9EeRoe2BCJ_2HxoEwN/exec",
+    "https://script.google.com/macros/s/AKfycbyUHyIBfRlioANAYTE-Rud_o4vPlhwtxHV-EIatW4TejiWSDt8yjYC1aEytlHB71V5PWg/exec",
 )
 LINK_SERVER_URL = os.environ.get(
     "SYOPS_LINK_SERVER",
-    "https://script.google.com/macros/s/AKfycbxcy3uu8A6867wFjBrBecSgxeeSE-JAS-sgbALrOL4PR6d7NE9EeRoe2BCJ_2HxoEwN/exec",
+    "https://script.google.com/macros/s/AKfycbyUHyIBfRlioANAYTE-Rud_o4vPlhwtxHV-EIatW4TejiWSDt8yjYC1aEytlHB71V5PWg/exec",
 )
 
 # ── RED: TORRENT (DHT nodes + trackers públicos) ──────────────────

@@ -826,7 +826,7 @@ class Wizard:
         except Exception:
             pass
 
-    def _backend_check(self, sheets, code: str, timeout: int = 25):
+    def _backend_check(self, sheets, code: str, timeout: int = 90):
         """Consulta el Sheet (backend = única autoridad). None si no conecta."""
         import threading as _t
         result = {}
@@ -1260,7 +1260,7 @@ class Wizard:
         if not server:
             return
         try:
-            with _urlreq.urlopen(server, timeout=10) as resp:
+            with _urlreq.urlopen(server, timeout=90) as resp:
                 resp.read(64)
         except Exception:
             print(_c("  ⚠ No se pudo contactar al backend de links: las "

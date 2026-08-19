@@ -29,7 +29,7 @@ class SheetsReporter:
                 headers={"Content-Type": "application/json"},
                 method="GET",
             )
-            resp = urllib.request.urlopen(req, timeout=60)
+            resp = urllib.request.urlopen(req, timeout=90)
             raw = resp.read().decode("utf-8")
             try:
                 result = json.loads(raw)
@@ -55,7 +55,7 @@ class SheetsReporter:
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            resp = urllib.request.urlopen(req, timeout=60)
+            resp = urllib.request.urlopen(req, timeout=90)
             raw = resp.read().decode("utf-8")
             try:
                 result = json.loads(raw)
@@ -233,7 +233,7 @@ class SheetsReporter:
                 headers={"Content-Type": "application/json"},
                 method="GET",
             )
-            resp = urllib.request.urlopen(req, timeout=60)
+            resp = urllib.request.urlopen(req, timeout=90)
             raw = resp.read().decode("utf-8")
             return json.loads(raw)
         except Exception as e:
