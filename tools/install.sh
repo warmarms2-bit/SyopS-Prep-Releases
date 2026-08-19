@@ -114,4 +114,12 @@ echo "  ✔ Comando creado: desinstalá con  eliminar-syops"
 
 # ── 4) Ejecutar ───────────────────────────────────────────────────────
 echo "  ▶ Abriendo SyopS Prep…"
-exec .venv/bin/python syops_wizard.py
+if [ -t 0 ]; then
+    # stdin ya es la terminal (se corrió el script directo)
+    exec .venv/bin/python syops_wizard.py
+else
+    # El one-liner llega por tubería (curl | bash): al terminar curl, el
+    # stdin queda en EOF. Reabrimos la terminal real (/dev/tty) para que
+    # el wizard pueda leer Enter/teclado.
+    exec .venv/bin/python syops_wizard.py < /dev/tty
+fi
