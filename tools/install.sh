@@ -81,13 +81,22 @@ EOF
 chmod +x "${BIN_DIR}/syops"
 case ":${PATH}:" in
   *":${BIN_DIR}:"*) ;;
-  *) for rc in "${HOME}/.zshrc" "${HOME}/.bashrc" "${HOME}/.profile"; do
-       if [ -f "${rc}" ] && ! grep -q "${BIN_DIR}" "${rc}"; then
-         printf '\nexport PATH="%s:$PATH"\n' "${BIN_DIR}" >> "${rc}"
-       fi
-     done ;;
+  *)
+    ZSHRC="${HOME}/.zshrc"
+    # El comando se agrega a la terminal: si no existe .zshrc se crea.
+    if ! grep -q "${BIN_DIR}" "${ZSHRC}" 2>/dev/null; then
+      printf '\nexport PATH="%s:$PATH"\n' "${BIN_DIR}" >> "${ZSHRC}"
+    fi
+    for rc in "${HOME}/.bashrc" "${HOME}/.profile"; do
+      if [ -f "${rc}" ] && ! grep -q "${BIN_DIR}" "${rc}"; then
+        printf '\nexport PATH="%s:$PATH"\n' "${BIN_DIR}" >> "${rc}"
+      fi
+    done
+    ;;
 esac
 echo "  ✔ Comando creado: reabrí el wizard cuando quieras con  syops"
+echo "  ⚠ En la ventana actual ejecutá primero:   source ~/.zshrc"
+echo "    (o abrí una ventana nueva de Terminal; la vieja no lo habilita)"
 
 # ── 3.6) Comando `eliminar-syops` (desinstalar desde la terminal) ─────
 cat > "${BIN_DIR}/eliminar-syops" <<EOF
