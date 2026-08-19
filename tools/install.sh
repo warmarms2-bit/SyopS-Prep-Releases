@@ -94,9 +94,25 @@ case ":${PATH}:" in
     done
     ;;
 esac
+# Si hay un directorio ya en el PATH por defecto de macOS y escribible
+# (/opt/homebrew/bin, /usr/local/bin), creamos los comandos también ahí:
+# funcionan de inmediato, sin recargar la terminal ni abrir una nueva.
+AUTO_BIN=""
+for p in /opt/homebrew/bin /usr/local/bin; do
+  if [ -d "$p" ] && [ -w "$p" ]; then
+    ln -sf "${BIN_DIR}/syops" "$p/syops"
+    ln -sf "${BIN_DIR}/eliminar-syops" "$p/eliminar-syops"
+    AUTO_BIN="$p"
+    break
+  fi
+done
 echo "  ✔ Comando creado: reabrí el wizard cuando quieras con  syops"
-echo "  ⚠ En la ventana actual ejecutá primero:   source ~/.zshrc"
-echo "    (o abrí una ventana nueva de Terminal; la vieja no lo habilita)"
+if [ -n "${AUTO_BIN}" ]; then
+  echo "  ✔ Listo para usar de una:  syops   (ya quedó en tu PATH actual)"
+else
+  echo "  ⚠ En la ventana actual ejecutá primero:   source ~/.zshrc"
+  echo "    (o abrí una ventana nueva de Terminal; la vieja no lo habilita)"
+fi
 
 # ── 3.6) Comando `eliminar-syops` (desinstalar desde la terminal) ─────
 cat > "${BIN_DIR}/eliminar-syops" <<EOF
@@ -109,6 +125,8 @@ read -r -p "¿Continuar? (s/n) [n]: " ok
 [ "\${ok:-n}" != "s" ] && [ "\${ok:-n}" != "S" ] && { echo "Cancelado."; exit 0; }
 rm -rf "${DEST}"
 rm -f "${BIN_DIR}/syops" "${BIN_DIR}/eliminar-syops"
+rm -f /opt/homebrew/bin/syops /opt/homebrew/bin/eliminar-syops
+rm -f /usr/local/bin/syops /usr/local/bin/eliminar-syops
 rm -rf "${HOME}/SYOPS"
 for rc in "\${HOME}/.zshrc" "\${HOME}/.bashrc" "\${HOME}/.profile"; do
   if [ -f "\$rc" ]; then
