@@ -77,10 +77,31 @@ class WizardCancelled(Exception):
     """El usuario canceló el proceso (tecla 'q' o sinónimos)."""
 
 
+def _readline():
+    """Lee una línea del teclado.
+
+    Si el wizard se lanzó desde un one-liner (`curl | bash`) en macOS/linux,
+    el stdin quedó como una tubería cerrada (EOF) al llegar aquí. En ese caso
+    se reabre directamente la terminal real (/dev/tty) para poder seguir
+    leyendo Enter y el teclado. En Windows no aplica (el one-liner corre en
+    la misma consola).
+    """
+    if sys.stdin.isatty():
+        return sys.stdin.readline()
+    if sys.platform != "win32":
+        try:
+            with open("/dev/tty", "r") as tty:
+                return tty.readline()
+        except OSError:
+            pass
+    return sys.stdin.readline()
+
+
 def _ask(prompt, default=None):
     suffix = f" [{default}]" if default is not None else ""
     try:
-        raw = input(f"{_c('» ', _GR)}{prompt}{suffix}: ").strip()
+        print(f"{_c('» ', _GR)}{prompt}{suffix}: ", end="", flush=True)
+        raw = _readline().strip()
     except (EOFError, KeyboardInterrupt):
         print()
         raise SystemExit(1)
