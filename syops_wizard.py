@@ -584,7 +584,7 @@ class Wizard:
                 self._show_method_card(m, indent="     ", apps=adobe_apps)
         print()
         while True:
-            r = _ask("Método", default=None if default is None else
+            r = _ask("Ingresá el número del método", default=None if default is None else
                      str(only_compatible.index(default) + 1) if default in only_compatible else None)
             try:
                 idx = int(r)
