@@ -584,8 +584,7 @@ class Wizard:
                 self._show_method_card(m, indent="     ", apps=adobe_apps)
         print()
         while True:
-            r = _ask("Ingresá el número del método", default=None if default is None else
-                     str(only_compatible.index(default) + 1) if default in only_compatible else None)
+            r = _ask("Ingresá el número del método")
             try:
                 idx = int(r)
                 if 1 <= idx <= len(only_compatible):
@@ -593,6 +592,9 @@ class Wizard:
                     break
             except ValueError:
                 pass
+            if not r and default in only_compatible:
+                self.adobe_method = default
+                break
             if only_compatible:
                 print(_c(f"  ↳ Elegí un número entre 1 y {len(only_compatible)}.", _YE))
             else:
