@@ -993,7 +993,12 @@ class Wizard:
         engine = DownloadEngine()
         manager = DownloadManager(engine, max_concurrent)
 
+        _started: set[str] = set()
+
         def on_progress(name, pct, status, downloaded, total):
+            if name not in _started:
+                print(f"\n  ▸ Descargando {name}…")
+                _started.add(name)
             pct = int(pct or 0)
             bar = "#" * (pct // 5) + "." * (20 - pct // 5)
             mb = downloaded / (1024 * 1024)
