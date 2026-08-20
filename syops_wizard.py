@@ -17,6 +17,7 @@ import asyncio
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 # En Windows la consola no pinta ANSI por defecto (sale `←[36m` como texto).
@@ -497,22 +498,22 @@ class Wizard:
         if hidden:
             print(_c(f"  (ocultos por no estar disponibles en {_OS_NAME}: "
                      f"{', '.join(hidden)})", _D))
-        print()
-        print(_c("  ─ Comandos ─", _D))
-        print(_c("    números  = elegir programas de esta categoría (ej: 1,3,5 o 1-3)", _D))
+        # Leyenda de comandos (se muestra al llegar a esta sección).
+        print(_c(_("seleccion.cli_comandos"), _D))
+        print(_c(_("seleccion.cli_hint_numeros"), _D))
         if self.selected_apps:
-            print(_c("    r        = quitar programas ya elegidos (deseleccionar)", _D))
-        print(_c("    0        = salir de esta categoría sin agregar (volver a elegir)", _D))
-        print(_c("    q        = salir del asistente", _D))
+            print(_c(_("seleccion.cli_hint_r"), _D))
+        print(_c(_("seleccion.cli_hint_0"), _D))
+        print(_c(_("seleccion.cli_hint_q"), _D))
         print()
 
         # Menú: números = agregar, "0" = salir de esta categoría,
         # "r" = quitar programas ya elegidos (deseleccionar).
         while True:
             remaining = max(0, self.max_apps - len(self.selected_apps))
-            prompt = "¿Qué programas querés? (números, 0 = salir de la categoría"
+            prompt = _("seleccion.cli_prompt_base")
             if self.selected_apps:
-                prompt += ", r = quitar elegidos"
+                prompt += _("seleccion.cli_prompt_r")
             prompt += ")"
             raw = _ask(prompt)
             low = raw.strip().lower()
@@ -523,18 +524,17 @@ class Wizard:
                 continue
             nums = _parse_numbers(raw, len(apps))
             if nums is None:
-                print(_c(f"  ↳ Números entre 1 y {len(apps)}, separados por "
-                         f"coma/espacio (ej: 1,3,5 o 1-3).", _YE))
+                print(_c(_("seleccion.cli_hint_numeros_invalidos", n=len(apps)), _YE))
                 continue
             if not nums:
-                print(_c("  ↳ Elegí al menos uno.", _YE))
+                print(_c(_("seleccion.cli_hint_min_uno"), _YE))
                 continue
             if len(nums) > remaining:
-                print(_c(f"  ↳ Solo te quedan {remaining} lugares en tu plan.", _YE))
+                print(_c(_("seleccion.cli_hint_restante", remaining=remaining), _YE))
                 continue
             new_apps = [apps[i - 1] for i in nums]
             self.motor.agregar_apps(new_apps)
-            print(_c(f"  ↳ Selección actual: {', '.join(self.selected_apps)}", _GR))
+            print(_c(_("seleccion.cli_ya_actual", sel=", ".join(self.selected_apps)), _GR))
             print()
 
             # Requisitos mínimos de las apps recién elegidas (como specs_info).
@@ -550,26 +550,26 @@ class Wizard:
         """Quita programas de la selección acumulada (deseleccionar)."""
         sel = list(self.selected_apps)
         if not sel:
-            print(_c("  ↳ No hay programas elegidos para quitar.", _YE))
+            print(_c(_("seleccion.cli_quitar_vacio"), _YE))
             return
         _sep()
-        print(_c(_B + "  QUITAR PROGRAMAS YA ELEGIDOS", _CY))
+        print(_c(_B + _("seleccion.cli_quitar_titulo"), _CY))
         _sep()
         _list_apps(sel)
         print()
         while True:
-            raw = _ask("¿Cuáles querés quitar? (números, 0 = cancelar)")
+            raw = _ask(_("seleccion.cli_quitar_prompt"))
             if raw.strip() == "0":
-                print(_c("  ↳ Sin cambios.", _D))
+                print(_c(_("seleccion.cli_quitar_sin_cambios"), _D))
                 return
             nums = _parse_numbers(raw, len(sel))
             if nums is None:
-                print(_c(f"  ↳ Números entre 1 y {len(sel)} (ej: 1,3 o 1-3).", _YE))
+                print(_c(_("seleccion.cli_hint_numeros_invalidos", n=len(sel)), _YE))
                 continue
             break
         removidos = self.motor.remover_apps([sel[i - 1] for i in nums])
-        print(_c(f"  ↳ Quitados: {', '.join(removidos)}", _YE))
-        print(_c(f"  ↳ Selección actual: {', '.join(self.selected_apps) or 'ninguno'}", _D))
+        print(_c(_("seleccion.cli_quitar_hecho", rem=", ".join(removidos)), _YE))
+        print(_c(_("seleccion.cli_ya_actual", sel=", ".join(self.selected_apps) or "ninguno"), _D))
         print()
 
     def choose_adobe_method_if_needed(self):
@@ -1052,12 +1052,24 @@ class Wizard:
         manager = DownloadManager(engine, max_concurrent)
 
         _started: set[str] = set()
+        _last_pct: dict[str, int] = {}
+        _last_t: dict[str, float] = {}
 
         def on_progress(name, pct, status, downloaded, total):
             if name not in _started:
                 print(f"\n  ▸ Descargando {name}…")
                 _started.add(name)
             pct = int(pct or 0)
+            # En terminal interactiva se redibuja siempre (barra animada).
+            # En pipe/logs solo si cambió ≥2% o pasaron 0.5s: evita el flood
+            # de ~15 líneas/s al volcar a un archivo.
+            last_pct = _last_pct.get(name)
+            if not sys.stdout.isatty():
+                if last_pct is None or (pct - last_pct) < 2:
+                    if time.time() - _last_t.get(name, 0.0) < 0.5:
+                        return
+            _last_pct[name] = pct
+            _last_t[name] = time.time()
             bar = "#" * (pct // 5) + "." * (20 - pct // 5)
             mb = downloaded / (1024 * 1024)
             total_mb = f"/{total / (1024 * 1024):.0f}MB" if total else ""

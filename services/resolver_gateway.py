@@ -14,10 +14,17 @@
 from __future__ import annotations
 
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
+# Override para tests/CI: fuerza la rama "sin resolver_pack" aunque el
+# paquete privado esté presente en el entorno.
+_FORCE_NO_PACK = os.environ.get("SYOPS_NO_RESOLVER_PACK", "") in ("1", "true", "True")
+
 try:  # resolver_pack presente (bundle del cliente / entorno privado)
+    if _FORCE_NO_PACK:
+        raise ImportError("SYOPS_NO_RESOLVER_PACK forzado (simula repo público)")
     import resolver_pack.torbox_provider as _torbox
     from resolver_pack import api as _api
     from resolver_pack import download_helpers as _helpers  # noqa: F401
