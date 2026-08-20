@@ -1014,7 +1014,7 @@ class Wizard:
                     t = next(x for x in tasks if x.name == name)
                     self._sheets.send_error(
                         f"{name}: {t.error_msg or 'error desconocido'} "
-                        f"(status={t.status})")
+                        f"(status={t.status}, url={t.url_or_magnet})")
                 except Exception:
                     pass
 
@@ -1029,7 +1029,8 @@ class Wizard:
         print(_c(f"  Finalizado: {len(tasks) - len(failed)}/{len(tasks)} completados.",
                  _GR if not failed else _YE))
         for t in failed:
-            print(_c(f"  ✗ {t.name}: {t.error_msg or 'error desconocido'}", _RD))
+            print(_c(f"  ✗ {t.name}: {t.error_msg or 'error desconocido'} "
+                     f"[url={t.url_or_magnet}]", _RD))
         return len(tasks) - len(failed)
 
     # ── Paso 7: final ──────────────────────────────────────────────
