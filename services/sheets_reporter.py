@@ -165,26 +165,6 @@ class SheetsReporter:
             data.update(self._scan_payload(scan_data, hwid))
         self._post_async(data)
 
-    def get_clients(self):
-        if not self.url:
-            return []
-        try:
-            url = self.url + "?action=get_clients"
-            req = urllib.request.Request(
-                url,
-                headers={"Content-Type": "application/json"},
-                method="GET",
-            )
-            resp = urllib.request.urlopen(req, timeout=10)
-            raw = resp.read().decode("utf-8")
-            data = json.loads(raw)
-            if data.get("status") == "ok":
-                return data.get("clients", [])
-            return []
-        except Exception as e:
-            logger.warning("Error getting clients: %s", e)
-            return []
-
     def send_activation(self, client_id, max_apps: int = 3, code: str = "", hwid: str = ""):
         logger.debug("send_activation: session_id=%s code=%s max_apps=%s", self.session_id, code, max_apps)
         self._post_async({
