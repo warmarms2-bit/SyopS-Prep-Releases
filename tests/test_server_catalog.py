@@ -1,4 +1,4 @@
-"""Catálogo servido por la hoja Links (categorías) + fallback local."""
+"""Catálogo servido por la hoja Links (categoria_seleccion) + fallback local."""
 
 import json
 
@@ -31,41 +31,44 @@ def _fake_open_ok(monkeypatch):
     def _urlopen(_req, timeout=0):
         return _FakeResp({"status": "ok", "items": [{"nombre": "Word",
                                                       "plataforma": "mac",
-                                                      "categoria": "Oficina"}]})
+                                                      "categoria_seleccion": "Oficina"}]})
     monkeypatch.setattr("urllib.request.urlopen", _urlopen)
 
 
-def test_build_catalog_agrupa_por_categoria():
+def test_build_catalog_agrupa_por_seleccion():
     items = [
-        {"nombre": "Word", "plataforma": "mac", "categoria": "Oficina"},
-        {"nombre": "Excel", "plataforma": "mac", "categoria": "Oficina"},
-        {"nombre": "Photoshop", "plataforma": "mac", "categoria": "Adobe"},
+        {"nombre": "Word", "plataforma": "mac", "categoria_seleccion": "Oficina",
+         "categoria": "Apps"},
+        {"nombre": "Excel", "plataforma": "mac", "categoria_seleccion": "Oficina",
+         "categoria": "Apps"},
+        {"nombre": "Photoshop", "plataforma": "mac",
+         "categoria_seleccion": "Diseño", "categoria": "Adobe"},
     ]
     cat = build_catalog(items, "mac", LOCAL)
     assert cat["Oficina"]["apps"] == ["Word", "Excel"]
     assert cat["Oficina"]["label"] == "Oficina"
-    assert cat["Adobe"]["apps"] == ["Photoshop"]
+    assert cat["Diseño"]["apps"] == ["Photoshop"]
 
 
 def test_build_catalog_filtra_por_so():
     items = [
-        {"nombre": "Word", "plataforma": "mac", "categoria": "Oficina"},
-        {"nombre": "Excel", "plataforma": "win", "categoria": "Oficina"},
+        {"nombre": "Word", "plataforma": "mac", "categoria_seleccion": "Oficina"},
+        {"nombre": "Excel", "plataforma": "win", "categoria_seleccion": "Oficina"},
     ]
     cat = build_catalog(items, "win", LOCAL)
     assert cat["Oficina"]["apps"] == ["Excel"]
 
 
 def test_build_catalog_sin_so_entra():
-    items = [{"nombre": "Winrar", "plataforma": "", "categoria": ""}]
+    items = [{"nombre": "Winrar", "plataforma": "", "categoria_seleccion": ""}]
     cat = build_catalog(items, "win", LOCAL)
     assert cat
     assert cat["general"]["apps"] == ["Winrar"]
     assert cat["general"]["label_key"] == "categoria.general"
 
 
-def test_build_catalog_categoria_vacia_cae_al_local():
-    items = [{"nombre": "Word", "plataforma": "mac", "categoria": ""}]
+def test_build_catalog_seleccion_vacia_cae_al_local():
+    items = [{"nombre": "Word", "plataforma": "mac", "categoria_seleccion": ""}]
     cat = build_catalog(items, "mac", LOCAL)
     assert cat
     entry = cat["office"]
@@ -74,8 +77,17 @@ def test_build_catalog_categoria_vacia_cae_al_local():
     assert entry["apps"] == ["Word"]
 
 
+def test_build_catalog_tipo_categoria_no_agrupa():
+    """`categoria` (Apps/Herramientas/Adobe) es un tipo, NO agrupa el menú."""
+    items = [{"nombre": "Word", "plataforma": "mac", "categoria": "Apps",
+              "categoria_seleccion": ""}]
+    cat = build_catalog(items, "mac", LOCAL)
+    assert "Apps" not in cat
+    assert cat["office"]["apps"] == ["Word"]
+
+
 def test_build_catalog_sin_match_local_al_bucket_otra():
-    items = [{"nombre": "AppNueva", "plataforma": "mac", "categoria": ""}]
+    items = [{"nombre": "AppNueva", "plataforma": "mac", "categoria_seleccion": ""}]
     cat = build_catalog(items, "mac", LOCAL)
     assert cat["Otra"]["apps"] == ["AppNueva"]
 
@@ -83,14 +95,16 @@ def test_build_catalog_sin_match_local_al_bucket_otra():
 def test_build_catalog_vacio_devuelve_none():
     assert build_catalog([], "mac", LOCAL) is None
     assert build_catalog(
-        [{"nombre": "Word", "plataforma": "win", "categoria": ""}], "mac", LOCAL,
+        [{"nombre": "Word", "plataforma": "win", "categoria_seleccion": ""}],
+        "mac", LOCAL,
     ) is None
 
 
 def test_fetch_catalog_index_ok(monkeypatch):
     _fake_open_ok(monkeypatch)
     items = fetch_catalog_index("https://script.example/exec", timeout=1)
-    assert items == [{"nombre": "Word", "plataforma": "mac", "categoria": "Oficina"}]
+    assert items == [{"nombre": "Word", "plataforma": "mac",
+                      "categoria_seleccion": "Oficina"}]
 
 
 def test_fetch_catalog_index_err(monkeypatch):

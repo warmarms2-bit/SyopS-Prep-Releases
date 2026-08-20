@@ -1,10 +1,12 @@
 """Catálogo de categorías provisto por el servidor (hoja Links).
 
-El wizard arma el árbol de categorías desde la hoja `Links` (columna
-`categoria`, sin URLs) con fallback al catálogo local si el backend no
-responde o no trae datos. Así el vendedor puede organizar grupos nuevos
-escribiendo `categoria` en el sheet, y el programa sigue funcionando
-offline con las categorías locales conocidas.
+El wizard arma el árbol de categorías de selección desde la hoja `Links`
+(columna `categoria_seleccion`, sin URLs) con fallback al catálogo local si
+el backend no responde o la fila no la define. La columna `categoria` (tipo
+Apps / Herramientas / Adobe) NO se usa para agrupar el menú.
+
+Cadena de fallback por fila: `categoria_seleccion` → categoría local conocida
+de la app → bucket genérico "Otra".
 """
 
 from __future__ import annotations
@@ -19,7 +21,8 @@ _UA = {"User-Agent": "SyopsWizard/1.3"}
 
 
 def fetch_catalog_index(server_url: str, timeout: float = 6) -> list | None:
-    """Consulta `get_catalog_index` y devuelve `[{nombre, plataforma, categoria}]`.
+    """Consulta `get_catalog_index` y devuelve `[{nombre, plataforma,
+    categoria, categoria_seleccion}]`.
 
     Devuelve None si el backend no responde o la respuesta no es válida
     (el llamador cae al catálogo local). Nunca lanza excepciones.
@@ -62,10 +65,12 @@ def build_catalog(items: list, os_key: str, local_categories: dict,
                   otra: str = DEFAULT_OTRA) -> dict | None:
     """Construye `{bucket: {"label": str|None, "label_key": str|None, "apps": []}}`.
 
-    - Cada item con plataforma == os_key entra agrupado por su `categoria`.
-    - Si algún item del bucket trae `categoria`, esa cadena es el label de
-      pantalla; si ningún item la trae, se usa el label_key local de la app
-      (caption i18n) para no romper categorías conocidas.
+    - Cada item con plataforma == os_key entra agrupado por su
+      `categoria_seleccion` (la columna de la hoja `Links`).
+    - Si algún item del bucket trae `categoria_seleccion`, esa cadena es el
+      label de pantalla; si ninguno la trae, se usa el label_key local de la
+      app (caption i18n) para no romper categorías conocidas.
+    - `categoria` (tipo Apps/Herramientas/Adobe) se ignora para agrupar.
     - Devuelve None si no queda ningún item para este SO.
     """
     from collections import OrderedDict
@@ -74,9 +79,9 @@ def build_catalog(items: list, os_key: str, local_categories: dict,
     cat: OrderedDict[str, dict] = OrderedDict()
 
     def bucket(item: dict) -> str:
-        categoria = (item.get("categoria") or "").strip()
-        if categoria:
-            return categoria
+        seleccion = (item.get("categoria_seleccion") or "").strip()
+        if seleccion:
+            return seleccion
         app_upper = (item.get("nombre") or "").strip().upper()
         return local_for.get(app_upper) or otra
 
@@ -91,9 +96,9 @@ def build_catalog(items: list, os_key: str, local_categories: dict,
             continue
         key = bucket(item)
         entry = cat.setdefault(key, {"label": None, "label_key": None, "apps": []})
-        categoria = (item.get("categoria") or "").strip()
-        if categoria:
-            entry["label"] = categoria
+        seleccion = (item.get("categoria_seleccion") or "").strip()
+        if seleccion:
+            entry["label"] = seleccion
         elif entry["label_key"] is None:
             entry["label_key"] = label_of.get(key, key)
         if nombre not in entry["apps"]:

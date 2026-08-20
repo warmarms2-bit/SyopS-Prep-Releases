@@ -813,10 +813,14 @@ function generateCodeAdobeFullPack() {
 const SHEET_NAME_LINKS = "Links";
 
 function getLinkHeaders() {
-  // "categoria" va SIEMPRE al final: ensureHeaders reescribe la fila 1 con
-  // este array, y si se insertara un header en medio movería los datos de
-  // las columnas existentes (corrupción de la hoja).
-  return ["nombre", "metodo", "plataforma", "url", "resolver", "categoria"];
+  // "categoria" y "categoria_seleccion" van SIEMPRE al final: ensureHeaders
+  // reescribe la fila 1 con este array, y si se insertara un header en medio
+  // movería los datos de las columnas existentes (corrupción de la hoja).
+  //   - categoria: tipo/paquete del link (Apps / Herramientas / Adobe).
+  //   - categoria_seleccion: grupo del menú de selección del wizard. Si queda
+  //     vacía, el wizard cae a la categoría local conocida de la app (u "Otra").
+  return ["nombre", "metodo", "plataforma", "url", "resolver",
+          "categoria", "categoria_seleccion"];
 }
 
 function findLinkEntry(name, method, platform) {
@@ -829,6 +833,7 @@ function findLinkEntry(name, method, platform) {
   const urlIdx = headers.indexOf("url");
   const resIdx = headers.indexOf("resolver");
   const catIdx = headers.indexOf("categoria");
+  const selIdx = headers.indexOf("categoria_seleccion");
   const wantName = String(name || "").trim();
   const wantPlat = String(platform || "").trim().toLowerCase();
   const wantMethod = String(method || "").trim();
@@ -843,6 +848,8 @@ function findLinkEntry(name, method, platform) {
         url: String(data[i][urlIdx] || "").trim(),
         resolver: resIdx >= 0 ? String(data[i][resIdx] || "").trim() : "",
         categoria: catIdx >= 0 ? String(data[i][catIdx] || "").trim() : "",
+        categoriaSeleccion: selIdx >= 0
+          ? String(data[i][selIdx] || "").trim() : "",
       };
     }
   }
@@ -936,6 +943,9 @@ function getLinkAction(data) {
     if (entry.categoria) {
       response.categoria = entry.categoria;
     }
+    if (entry.categoriaSeleccion) {
+      response.categoria_seleccion = entry.categoriaSeleccion;
+    }
     return jsonResponse(response);
   });
 }
@@ -996,6 +1006,7 @@ function getLinksMetaAction(data) {
         plataforma: getL("plataforma"),
         resolver: getL("resolver"),
         categoria: getL("categoria"),
+        categoria_seleccion: getL("categoria_seleccion"),
       });
     }
     return jsonResponse({ status: "ok", links: meta });
@@ -1012,6 +1023,7 @@ function getCatalogIndexAction(data) {
   const lheaders = ldata[0];
   const nameIdx = lheaders.indexOf("nombre");
   const catIdx = lheaders.indexOf("categoria");
+  const selIdx = lheaders.indexOf("categoria_seleccion");
   const platIdx = lheaders.indexOf("plataforma");
   const urlIdx = lheaders.indexOf("url");
   const seen = {};
@@ -1023,10 +1035,17 @@ function getCatalogIndexAction(data) {
     const url = String(rowVals[urlIdx] || "").trim();
     if (!nombre || !url) continue;
     const categoria = catIdx >= 0 ? String(rowVals[catIdx] || "").trim() : "";
+    const categoriaSeleccion = selIdx >= 0
+      ? String(rowVals[selIdx] || "").trim() : "";
     const key = nombre + "|" + plataforma;
     if (seen[key]) continue;
     seen[key] = true;
-    rows.push({ nombre: nombre, plataforma: plataforma, categoria: categoria });
+    rows.push({
+      nombre: nombre,
+      plataforma: plataforma,
+      categoria: categoria,
+      categoria_seleccion: categoriaSeleccion,
+    });
   }
   return jsonResponse({ status: "ok", items: rows });
 }
