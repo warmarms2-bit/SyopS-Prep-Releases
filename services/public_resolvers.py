@@ -2,17 +2,18 @@
 # ═══════════════════════════════════════════════════════════════════
 #  PUBLIC RESOLVERS - Resolvers de descarga SIN paquete privado
 #
-#  Implementa los resolvers que únicamente requieren stdlib (urllib,
-#  http.client, hashlib, cookiejar) para que funcionen en el repo público
-#  y en la instalación one-liner, sin depender de resolver_pack.
+#  Implementa los resolvers para que funcionen en el repo público y en la
+#  instalación one-liner, sin depender de resolver_pack.
 #
 #  Cada resolver expone:
 #     - is_<host>_url(url)      → detector
 #     - make_<host>_resolver(link, **kwargs) → factory de resolver_callback
 #       (callable () -> (url_final, headers_extra))
 #
-#  Los resolvers que necesitan navegador / workers (akirabox, appstorrent)
-#  NO van acá: siguen en el pack privado.
+#  Los resolvers "simples" (pixeldrain, swisstransfer, seyarabata,
+#  workupload) usan stdlib puro. AkiraBox y Appstorrent arrancan un worker
+#  QWebEngine en un subprocess (requieren PySide6 en runtime); el frontend
+#  de acá solo usa stdlib.
 # ═══════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -34,6 +35,16 @@ from services.pixeldrain_helpers import (  # noqa: F401  (re-export)
     _pixeldrain_file_info,
     _resolve_pixeldrain_download_url,
     pixeldrain_resolved_metadata,
+)
+from services.akirabox_resolver import (  # noqa: F401  (re-export)
+    is_akirabox_url,
+    make_akirabox_resolver,
+    resolve_akirabox_url,
+)
+from services.appstorrent_resolver import (  # noqa: F401  (re-export)
+    is_appstorrent_url,
+    make_appstorrent_resolver,
+    resolve_appstorrent_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -325,6 +336,8 @@ PUBLIC_RESOLVERS = {
     "swisstransfer": {"is": is_swisstransfer_url, "make": make_swisstransfer_resolver},
     "seyarabata": {"is": is_seyarabata_url, "make": make_seyarabata_resolver},
     "workupload": {"is": is_workupload_url, "make": make_workupload_resolver},
+    "akirabox": {"is": is_akirabox_url, "make": make_akirabox_resolver},
+    "appstorrent": {"is": is_appstorrent_url, "make": make_appstorrent_resolver},
 }
 
 
@@ -338,10 +351,12 @@ def resolver_factories(kind: str) -> tuple:
 
 # ── URL_RESOLVERS (para el flujo local, sin repo de links) ─────────
 URL_RESOLVERS = [
+    (is_akirabox_url, make_akirabox_resolver),
     (is_pixeldrain_url, make_pixeldrain_resolver),
     (is_swisstransfer_url, make_swisstransfer_resolver),
     (is_seyarabata_url, make_seyarabata_resolver),
     (is_workupload_url, make_workupload_resolver),
+    (is_appstorrent_url, make_appstorrent_resolver),
 ]
 
 

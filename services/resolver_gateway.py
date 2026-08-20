@@ -56,20 +56,25 @@ except Exception as exc:  # sin resolver_pack: stubs funcionales
     HAS_RESOLVER_PACK = False
     logger.debug("resolver_pack no presente (%s); usando stubs.", exc)
 
-    # Resolvers PÚBLICOS (stdlib puro): funcionan sin el pack privado.
-    # Pixeldrain (bypass/API), SwissTransfer (API REST), Seyarabata (302)
-    # y Workupload (session+puzzle). AkiraBox y Appstorrent requieren
-    # workers/navegador → solo con el pack presente.
+    # Resolvers PÚBLICOS: funcionan sin el pack privado.
+    # Pixeldrain (bypass/API), SwissTransfer (API REST), Seyarabata (302),
+    # Workupload (session+puzzle) usan stdlib puro. AkiraBox y Appstorrent
+    # arrancan su worker QWebEngine en un subprocess (requieren PySide6 en
+    # runtime, presente en la instalación real).
     from services.public_resolvers import (  # noqa: F401
         PIXELDRAIN_BYPASS_HOSTS,
         _pixeldrain_direct_url,
         _pixeldrain_file_id,
         _pixeldrain_file_info,
         _resolve_pixeldrain_download_url,
+        is_akirabox_url,
+        is_appstorrent_url,
         is_pixeldrain_url,
         is_seyarabata_url,
         is_swisstransfer_url,
         is_workupload_url,
+        make_akirabox_resolver,
+        make_appstorrent_resolver,
         make_pixeldrain_resolver,
         make_seyarabata_resolver,
         make_swisstransfer_resolver,
@@ -86,20 +91,6 @@ except Exception as exc:  # sin resolver_pack: stubs funcionales
         return "manual", ""
 
     URL_RESOLVERS: list = list(_PUBLIC_URL_RESOLVERS)
-
-    def _no(url: str, *args, **kwargs) -> bool:
-        return False
-
-    is_akirabox_url = _no
-    is_appstorrent_url = _no
-
-    def _no_factory(link, *args, **kwargs):
-        def resolve() -> tuple[str, dict[str, str]]:
-            raise RuntimeError("resolver_pack no disponible en este entorno")
-        return resolve
-
-    make_akirabox_resolver = _no_factory
-    make_appstorrent_resolver = _no_factory
 
     class TorrentDownloader:
         """Stub: sin el pack privado no hay clientes torrent."""
@@ -124,16 +115,17 @@ RESOLVER_KINDS = {
     "appstorrent": "make_appstorrent_resolver",
 }
 
-# Kinds que necesitan SI o SI el pack privado (workers/navegador).
-_PACK_ONLY_RESOLVERS = ("akirabox", "appstorrent")
+# Todos los kinds tienen soporte sin el pack privado (services/public_resolvers.py).
+# El pack sigue disponible y tiene prioridad para sus propios resolvers.
+_PACK_ONLY_RESOLVERS = ()
 
 
 def has_resolver(kind: str) -> bool:
     """True si `kind` está disponible en este entorno.
 
-    Pixeldrain, SwissTransfer, Seyarabata y Workupload son soporte PÚBLICO
-    (stdlib puro en services/public_resolvers.py): disponibles también sin
-    el pack privado. AkiraBox y Appstorrent requieren resolver_pack.
+    Todos los kinds (pixeldrain, swisstransfer, seyarabata, workupload,
+    akirabox, appstorrent) tienen soporte PÚBLICO en
+    services/public_resolvers.py: disponibles también sin el pack privado.
     """
     if kind in RESOLVER_KINDS and kind not in _PACK_ONLY_RESOLVERS:
         return True
@@ -146,8 +138,8 @@ def get_resolver(kind: str, link: str, app: str | None = None, **kwargs):
     """Devuelve un resolver_callback para `kind` (activación lazy por app).
 
     Solo crea el callback del resolver pedido; no se instancia ningún otro.
-    Los kinds públicos usan el soporte de services/public_resolvers.py;
-    AkiraBox/Appstorrent requieren el pack privado.
+    Los kinds usan el soporte de services/public_resolvers.py; con el pack
+    presente los factories del pack tienen prioridad.
     """
     if kind in RESOLVER_KINDS and kind not in _PACK_ONLY_RESOLVERS:
         kwargs.setdefault("link", link)
