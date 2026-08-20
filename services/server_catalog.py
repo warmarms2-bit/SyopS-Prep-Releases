@@ -67,6 +67,8 @@ def build_catalog(items: list, os_key: str, local_categories: dict,
 
     - Cada item con plataforma == os_key entra agrupado por su
       `categoria_seleccion` (la columna de la hoja `Links`).
+    - Las filas `kind == "tool"` (patchers/helpers instaladores) se excluyen:
+      no son items seleccionables del menú.
     - Si algún item del bucket trae `categoria_seleccion`, esa cadena es el
       label de pantalla; si ninguno la trae, se usa el label_key local de la
       app (caption i18n) para no romper categorías conocidas.
@@ -87,6 +89,8 @@ def build_catalog(items: list, os_key: str, local_categories: dict,
 
     for item in items:
         if not isinstance(item, dict):
+            continue
+        if (item.get("kind") or "").strip().lower() == "tool":
             continue
         plataforma = (item.get("plataforma") or "").strip().lower()
         if plataforma and plataforma != os_key:

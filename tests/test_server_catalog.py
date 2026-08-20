@@ -92,6 +92,18 @@ def test_build_catalog_sin_match_local_al_bucket_otra():
     assert cat["Otra"]["apps"] == ["AppNueva"]
 
 
+def test_build_catalog_excluye_tools():
+    """Las filas kind="tool" no arman item del menú."""
+    items = [
+        {"nombre": "Word", "plataforma": "mac", "categoria_seleccion": "Oficina"},
+        {"nombre": "Photoshop Patcher", "plataforma": "mac",
+         "categoria_seleccion": "Adobe", "kind": "tool"},
+    ]
+    cat = build_catalog(items, "mac", LOCAL)
+    assert cat["Oficina"]["apps"] == ["Word"]
+    assert not any("Patcher" in a for v in cat.values() for a in v["apps"])
+
+
 def test_build_catalog_vacio_devuelve_none():
     assert build_catalog([], "mac", LOCAL) is None
     assert build_catalog(

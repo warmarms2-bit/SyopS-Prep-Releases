@@ -813,14 +813,18 @@ function generateCodeAdobeFullPack() {
 const SHEET_NAME_LINKS = "Links";
 
 function getLinkHeaders() {
-  // "categoria" y "categoria_seleccion" van SIEMPRE al final: ensureHeaders
-  // reescribe la fila 1 con este array, y si se insertara un header en medio
-  // movería los datos de las columnas existentes (corrupción de la hoja).
+  // Las columnas nuevas (categoria, categoria_seleccion, kind) van SIEMPRE
+  // al final: ensureHeaders reescribe la fila 1 con este array, y si se
+  // insertara un header en medio movería los datos de las columnas
+  // existentes (corrupción de la hoja).
   //   - categoria: tipo/paquete del link (Apps / Herramientas / Adobe).
   //   - categoria_seleccion: grupo del menú de selección del wizard. Si queda
   //     vacía, el wizard cae a la categoría local conocida de la app (u "Otra").
+  //   - kind: "tool" = helper/patcher instalador. Las filas tool NO aparecen
+  //     en el menú de selección (se invocan según la app elegida); el resto
+  //     de valores (o vacío) = app normal con link.
   return ["nombre", "metodo", "plataforma", "url", "resolver",
-          "categoria", "categoria_seleccion"];
+          "categoria", "categoria_seleccion", "kind"];
 }
 
 function findLinkEntry(name, method, platform) {
@@ -1026,6 +1030,7 @@ function getCatalogIndexAction(data) {
   const selIdx = lheaders.indexOf("categoria_seleccion");
   const platIdx = lheaders.indexOf("plataforma");
   const urlIdx = lheaders.indexOf("url");
+  const kindIdx = lheaders.indexOf("kind");
   const seen = {};
   const rows = [];
   for (let i = 1; i < ldata.length; i++) {
@@ -1034,6 +1039,10 @@ function getCatalogIndexAction(data) {
     const plataforma = String(rowVals[platIdx] || "").trim().toLowerCase();
     const url = String(rowVals[urlIdx] || "").trim();
     if (!nombre || !url) continue;
+    // kind="tool": helper/patcher, no es un item seleccionable del menú.
+    const kind = kindIdx >= 0
+      ? String(rowVals[kindIdx] || "").trim().toLowerCase() : "";
+    if (kind === "tool") continue;
     const categoria = catIdx >= 0 ? String(rowVals[catIdx] || "").trim() : "";
     const categoriaSeleccion = selIdx >= 0
       ? String(rowVals[selIdx] || "").trim() : "";
