@@ -250,6 +250,21 @@ class FlujoMotor:
     def puede_agregar(self) -> bool:
         return len(self.state.seleccion) < self.state.max_apps
 
+    def remover_apps(self, apps: list) -> list:
+        """Quita apps de la selección acumulada (deseleccionar).
+
+        Al quitar un Adobe patcheado también sale del listado GenP, y al
+        quitar la app padre de Office se limpian sus sub-apps.
+        Devuelve las apps efectivamente removidas."""
+        removidos = [a for a in apps if a in self.state.seleccion]
+        if not removidos:
+            return []
+        self.state.seleccion = [a for a in self.state.seleccion if a not in apps]
+        self.state.adobe_patched = [a for a in self.state.adobe_patched if a not in apps]
+        if OFFICE_PARENT in apps:
+            self.state.office_sub = []
+        return removidos
+
     def elegir_office(self, sub_apps: list):
         self.state.office_sub = list(sub_apps)
 

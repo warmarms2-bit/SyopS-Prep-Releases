@@ -486,7 +486,6 @@ class Wizard:
 
         if not self.motor.puede_agregar():
             print(_c(f"  Ya elegiste {self.max_apps} apps (máximo de tu plan).", _YE))
-            return
 
         _sep()
         print(_c(_B + "  SELECCIÓN DE PROGRAMAS", _CY))
@@ -499,20 +498,72 @@ class Wizard:
             print(_c(f"  (ocultos por no estar disponibles en {_OS_NAME}: "
                      f"{', '.join(hidden)})", _D))
         print()
-        remaining = max(0, self.max_apps - len(self.selected_apps))
-        nums = _pick_numbers(len(apps), limit=remaining,
-                             prompt="¿Qué programas querés? (números)")
-        new_apps = [apps[i - 1] for i in nums]
-        self.motor.agregar_apps(new_apps)
-        print(_c(f"  ↳ Selección actual: {', '.join(self.selected_apps)}", _GR))
+
+        # Menú: números = agregar, "0" = salir de esta categoría,
+        # "r" = quitar programas ya elegidos (deseleccionar).
+        while True:
+            remaining = max(0, self.max_apps - len(self.selected_apps))
+            prompt = "¿Qué programas querés? (números, 0 = salir de la categoría"
+            if self.selected_apps:
+                prompt += ", r = quitar elegidos"
+            prompt += ")"
+            raw = _ask(prompt)
+            low = raw.strip().lower()
+            if low == "0":
+                return "salir"
+            if low in ("r", "quitar"):
+                self._quitar_apps()
+                continue
+            nums = _parse_numbers(raw, len(apps))
+            if nums is None:
+                print(_c(f"  ↳ Números entre 1 y {len(apps)}, separados por "
+                         f"coma/espacio (ej: 1,3,5 o 1-3).", _YE))
+                continue
+            if not nums:
+                print(_c("  ↳ Elegí al menos uno.", _YE))
+                continue
+            if len(nums) > remaining:
+                print(_c(f"  ↳ Solo te quedan {remaining} lugares en tu plan.", _YE))
+                continue
+            new_apps = [apps[i - 1] for i in nums]
+            self.motor.agregar_apps(new_apps)
+            print(_c(f"  ↳ Selección actual: {', '.join(self.selected_apps)}", _GR))
+            print()
+
+            # Requisitos mínimos de las apps recién elegidas (como specs_info).
+            self._show_selected_specs(new_apps)
+
+            # Office → sub-apps (misma página OFFICE de la UI)
+            if OFFICE_PARENT in new_apps:
+                self.choose_office()
+            break
+        return None
+
+    def _quitar_apps(self):
+        """Quita programas de la selección acumulada (deseleccionar)."""
+        sel = list(self.selected_apps)
+        if not sel:
+            print(_c("  ↳ No hay programas elegidos para quitar.", _YE))
+            return
+        _sep()
+        print(_c(_B + "  QUITAR PROGRAMAS YA ELEGIDOS", _CY))
+        _sep()
+        _list_apps(sel)
         print()
-
-        # Requisitos mínimos de las apps recién elegidas (como specs_info).
-        self._show_selected_specs(new_apps)
-
-        # Office → sub-apps (misma página OFFICE de la UI)
-        if OFFICE_PARENT in new_apps:
-            self.choose_office()
+        while True:
+            raw = _ask("¿Cuáles querés quitar? (números, 0 = cancelar)")
+            if raw.strip() == "0":
+                print(_c("  ↳ Sin cambios.", _D))
+                return
+            nums = _parse_numbers(raw, len(sel))
+            if nums is None:
+                print(_c(f"  ↳ Números entre 1 y {len(sel)} (ej: 1,3 o 1-3).", _YE))
+                continue
+            break
+        removidos = self.motor.remover_apps([sel[i - 1] for i in nums])
+        print(_c(f"  ↳ Quitados: {', '.join(removidos)}", _YE))
+        print(_c(f"  ↳ Selección actual: {', '.join(self.selected_apps) or 'ninguno'}", _D))
+        print()
 
     def choose_adobe_method_if_needed(self):
         """En macOS: elegir el método Adobe sobre el total seleccionado.
@@ -1200,7 +1251,11 @@ class Wizard:
         self.show_scan()
         self.choose_category()
         while True:
-            self.choose_apps()
+            salio = self.choose_apps()
+            if salio == "salir":
+                # El usuario no quería apps de esa categoría: elegir otra.
+                self.choose_category()
+                continue
             if len(self.selected_apps) >= self.max_apps:
                 print(_c(f"  Llegaste al máximo de {self.max_apps} apps de tu plan.", _GR))
                 break
