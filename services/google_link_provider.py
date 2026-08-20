@@ -49,6 +49,7 @@ class GoogleLinkProvider:
             "name": name,
             "method": method or "",
             "platform": platform or "",
+            "kind": kind or "",
         })
         url = f"{self.script_url}?{params}"
         try:
