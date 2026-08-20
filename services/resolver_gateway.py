@@ -54,6 +54,18 @@ except Exception as exc:  # sin resolver_pack: stubs funcionales
     HAS_RESOLVER_PACK = False
     logger.debug("resolver_pack no presente (%s); usando stubs.", exc)
 
+    # Soporte público de Pixeldrain: aunque no exista resolver_pack, los
+    # links de Pixeldrain de la hoja se resuelven (bypass o API directa).
+    # Sin esto el engine bajaría la página HTML de vista y fallaría.
+    from services.pixeldrain_helpers import (   # noqa: F401
+        _pixeldrain_file_id,
+        _pixeldrain_file_info,
+        _pixeldrain_direct_url,
+        _resolve_pixeldrain_download_url,
+        pixeldrain_resolved_metadata,
+        PIXELDRAIN_BYPASS_HOSTS,
+    )
+
     def _resolve_download_link(app: str) -> tuple:
         """Sin el pack privado no hay links configurados → método manual."""
         return "manual", ""
@@ -78,8 +90,14 @@ except Exception as exc:  # sin resolver_pack: stubs funcionales
     make_akirabox_resolver = _no_factory
     make_swisstransfer_resolver = _no_factory
     make_seyarabata_resolver = _no_factory
-    make_pixeldrain_resolver = _no_factory
     make_appstorrent_resolver = _no_factory
+
+    def make_pixeldrain_resolver(link, app=None, **kwargs):
+        """Resolver público de Pixeldrain: convierte /u/<id> en /api/file/<id>.
+        No requiere resolver_pack; el bypass/API lo maneja el engine."""
+        def resolve() -> tuple[str, dict[str, str]]:
+            return _pixeldrain_direct_url(link), {}
+        return resolve
 
     def _no_pixeldrain(url: str) -> str:
         return url
@@ -87,12 +105,8 @@ except Exception as exc:  # sin resolver_pack: stubs funcionales
     def _no_pixeldrain_tuple(url: str) -> tuple:
         return None, 0, False, ""
 
-    _pixeldrain_file_id = lambda url: ""  # noqa: E731
-    _pixeldrain_file_info = lambda url: (None, 0)  # noqa: E731
-    _pixeldrain_direct_url = _no_pixeldrain
-    _resolve_pixeldrain_download_url = _no_pixeldrain_tuple
-    pixeldrain_resolved_metadata = lambda url: (0, "", False)  # noqa: E731
-    PIXELDRAIN_BYPASS_HOSTS: tuple = ()
+    # Los helpers públicos de Pixeldrain (importados arriba) resuelven
+    # /u/<id> y /api/file/<id> sin el pack privado; no se sobreescriben.
 
     class TorrentDownloader:
         """Stub: sin el pack privado no hay clientes torrent."""
@@ -119,7 +133,14 @@ RESOLVER_KINDS = {
 
 
 def has_resolver(kind: str) -> bool:
-    """True si `kind` es un resolver conocido y el pack está disponible."""
+    """True si `kind` es un resolver conocido y está disponible.
+
+    Pixeldrain es soporte PÚBLICO (nativo en services/pixeldrain_helpers.py),
+    por lo que también está disponible sin el pack privado. El resto de
+    kinks requiere resolver_pack.
+    """
+    if kind == "pixeldrain":
+        return True
     if not HAS_RESOLVER_PACK:
         return False
     return kind in RESOLVER_KINDS
@@ -129,8 +150,14 @@ def get_resolver(kind: str, link: str, app: str = None, **kwargs):
     """Devuelve un resolver_callback para `kind` (activación lazy por app).
 
     Solo crea el callback del resolver pedido; no se instancia ningún otro.
-    Sin el pack privado (o con un kind desconocido) lanza un error claro.
+    Pixeldrain usa el soporte público (sin pack). Sin el pack privado (o con
+    un kind desconocido) lanza un error claro.
     """
+    if kind == "pixeldrain":
+        kwargs.setdefault("link", link)
+        if app is not None:
+            kwargs.setdefault("app", app)
+        return make_pixeldrain_resolver(**kwargs)
     if not HAS_RESOLVER_PACK:
         raise RuntimeError(
             "resolver_pack no disponible en este entorno: no se puede "
