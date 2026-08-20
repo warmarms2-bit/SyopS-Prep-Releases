@@ -127,6 +127,15 @@ RESOLVER_KINDS = {
 _PACK_ONLY_RESOLVERS = ()
 
 
+def _normalize_kind(kind) -> str:
+    """Normaliza el hint del sheet: minúsculas y sin espacios externos.
+
+    La celda `resolver` puede traer "Pixeldrain", " pixeldrain " etc.; se
+    tolera para no romper la descarga por un typo de mayúsculas/espacios.
+    """
+    return (str(kind or "")).strip().lower()
+
+
 def has_resolver(kind: str) -> bool:
     """True si `kind` está disponible en este entorno.
 
@@ -134,6 +143,7 @@ def has_resolver(kind: str) -> bool:
     akirabox, appstorrent) tienen soporte PÚBLICO en
     services/public_resolvers.py: disponibles también sin el pack privado.
     """
+    kind = _normalize_kind(kind)
     if kind in RESOLVER_KINDS and kind not in _PACK_ONLY_RESOLVERS:
         return True
     if not HAS_RESOLVER_PACK:
@@ -148,6 +158,7 @@ def get_resolver(kind: str, link: str, app: str | None = None, **kwargs):
     Los kinds usan el soporte de services/public_resolvers.py; con el pack
     presente los factories del pack tienen prioridad.
     """
+    kind = _normalize_kind(kind)
     if kind in RESOLVER_KINDS and kind not in _PACK_ONLY_RESOLVERS:
         kwargs.setdefault("link", link)
         if app is not None:

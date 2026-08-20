@@ -64,7 +64,7 @@ def _provider_task(provider, kind: str, name: str, method: str, platform: str,
     # Se activa SOLO ese resolver (lazy por app); si no está disponible,
     # se degrada a descarga directa con aviso.
     callback = None
-    hint = data.get("resolver")
+    hint = (data.get("resolver") or "").strip().lower()
     if hint:
         if has_resolver(hint):
             kwargs = {"link": url, "app": display}
