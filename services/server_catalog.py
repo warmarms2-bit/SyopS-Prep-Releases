@@ -69,9 +69,14 @@ def build_catalog(items: list, os_key: str, local_categories: dict,
       `categoria_seleccion` (la columna de la hoja `Links`).
     - Las filas `kind == "tool"` (patchers/helpers instaladores) se excluyen:
       no son items seleccionables del menú.
-    - Si algún item del bucket trae `categoria_seleccion`, esa cadena es el
-      label de pantalla; si ninguno la trae, se usa el label_key local de la
-      app (caption i18n) para no romper categorías conocidas.
+    - Un valor de `categoria_seleccion` solo es grupo de menú si:
+      * no es una lista (valores separados por coma nunca son un grupo) y
+      * no coincide con el `nombre` de otra app del mismo catálogo
+        (evita "categorías" que en realidad son apps etiquetadas).
+      De lo contrario la fila cae al fallback local/"Otra".
+    - Si algún item del bucket trae `categoria_seleccion` válida, esa cadena
+      es el label de pantalla; si ninguno la trae, se usa el label_key local
+      de la app (caption i18n) para no romper categorías conocidas.
     - `categoria` (tipo Apps/Herramientas/Adobe) se ignora para agrupar.
     - Devuelve None si no queda ningún item para este SO.
     """
@@ -80,9 +85,20 @@ def build_catalog(items: list, os_key: str, local_categories: dict,
     local_for, label_of = _invert_local(local_categories)
     cat: OrderedDict[str, dict] = OrderedDict()
 
+    seen_names = {
+        str(it.get("nombre") or "").strip().casefold()
+        for it in items if isinstance(it, dict)
+    }
+
+    def group_valid(value: str) -> bool:
+        v = (value or "").strip()
+        if not v or "," in v:
+            return False
+        return v.casefold() not in seen_names
+
     def bucket(item: dict) -> str:
         seleccion = (item.get("categoria_seleccion") or "").strip()
-        if seleccion:
+        if group_valid(seleccion):
             return seleccion
         app_upper = (item.get("nombre") or "").strip().upper()
         return local_for.get(app_upper) or otra
@@ -101,7 +117,7 @@ def build_catalog(items: list, os_key: str, local_categories: dict,
         key = bucket(item)
         entry = cat.setdefault(key, {"label": None, "label_key": None, "apps": []})
         seleccion = (item.get("categoria_seleccion") or "").strip()
-        if seleccion:
+        if group_valid(seleccion):
             entry["label"] = seleccion
         elif entry["label_key"] is None:
             entry["label_key"] = label_of.get(key, key)

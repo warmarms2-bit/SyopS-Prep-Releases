@@ -77,6 +77,42 @@ def test_build_catalog_seleccion_vacia_cae_al_local():
     assert entry["apps"] == ["Word"]
 
 
+def test_build_catalog_nombre_de_app_no_es_grupo():
+    """'After Effects' en categoria_seleccion de un patcher NO crea categoría."""
+    items = [
+        {"nombre": "After Effects", "plataforma": "mac", "categoria_seleccion": "",
+         "categoria": "Apps"},
+        {"nombre": "After Effects Patcher", "plataforma": "mac",
+         "categoria_seleccion": "After Effects"},
+    ]
+    cat = build_catalog(items, "mac", LOCAL)
+    assert "After Effects" not in cat
+    assert "After Effects Patcher" in cat["Otra"]["apps"]
+
+
+def test_build_catalog_lista_separada_por_coma_no_es_grupo():
+    items = [
+        {"nombre": "MSU", "plataforma": "mac",
+         "categoria_seleccion": "Word, Outlook, Office, Excel"},
+    ]
+    cat = build_catalog(items, "mac", LOCAL)
+    assert not any(", " in k for k in cat)
+    assert "MSU" in next(v["apps"] for v in cat.values())
+
+
+def test_build_catalog_grupo_limpio_se_mantiene():
+    items = [
+        {"nombre": "Word", "plataforma": "mac", "categoria_seleccion": "Oficina"},
+        {"nombre": "Excel", "plataforma": "mac", "categoria_seleccion": "Oficina"},
+        {"nombre": "Photoshop", "plataforma": "mac",
+         "categoria_seleccion": "Adobe (todas)"},
+    ]
+    cat = build_catalog(items, "mac", LOCAL)
+    assert cat["Oficina"]["apps"] == ["Word", "Excel"]
+    assert cat["Adobe (todas)"]["apps"] == ["Photoshop"]
+    assert cat["Adobe (todas)"]["label"] == "Adobe (todas)"
+
+
 def test_build_catalog_tipo_categoria_no_agrupa():
     """`categoria` (Apps/Herramientas/Adobe) es un tipo, NO agrupa el menú."""
     items = [{"nombre": "Word", "plataforma": "mac", "categoria": "Apps",
