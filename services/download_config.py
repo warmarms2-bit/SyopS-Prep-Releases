@@ -42,3 +42,9 @@ STALL_TIMEOUT_TORRENT = 600   # idem para torrent
 # ── Descarga por segmentos (pixeldrain) ────────────────────────────
 PIXELDRAIN_SEGMENTS = 4
 SEGMENT_CHUNK = 262144
+
+# ── Descarga por segmentos (genérica, hosts con Accept-Ranges) ─────
+# Tamaño mínimo para segmentar una descarga HTTP genérica (no pixeldrain):
+# por debajo no vale la pena abrir N conexiones.
+SEGMENTED_MIN_SIZE = 50 * 1024 * 1024  # 50 MB
+SEGMENTED_SEGMENTS = 4

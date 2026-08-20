@@ -20,7 +20,7 @@ from datetime import datetime
 from services.signals import Signal
 
 from i18n import _
-from services.download_config import HTTP_TIMEOUT, SEGMENT_CHUNK
+from services.download_config import HTTP_TIMEOUT, SEGMENT_CHUNK, SEGMENTED_MIN_SIZE, SEGMENTED_SEGMENTS
 from services.http_utils import (
     _safe_eta,
     _safe_pct,
@@ -348,6 +348,14 @@ class DownloadEngine(TorrentDownloader):
             await self._download_http_pixeldrain(name, url, dest_dir)
             return
 
+        # Aceleración genérica: si el host responde Accept-Ranges y el archivo
+        # es grande, descargar en N segmentos paralelos en vez de un hilo solo.
+        supports_range, total = await asyncio.to_thread(self._probe_range_sync, url)
+        if supports_range and total >= SEGMENTED_MIN_SIZE:
+            ok = await self._download_http_segmented(name, url, dest_dir, total)
+            if ok is not None:
+                return
+
         ext = _guess_extension_from_url(url)
         safe_name = name.replace(" ", "_")
         if not safe_name.lower().endswith(ext.lower()):
@@ -366,6 +374,109 @@ class DownloadEngine(TorrentDownloader):
             except Exception:
                 pass
             self._emit_completed(name, False, 0)
+
+    def _probe_range_sync(self, url: str) -> tuple:
+        """HEAD a una URL: (supports_range, content_length). No trae el cuerpo."""
+        try:
+            req = urllib.request.Request(url, headers=_http_headers(url), method="HEAD")
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                supports = resp.headers.get("accept-ranges", "").lower() == "bytes"
+                total = int(resp.headers.get("content-length", 0) or 0)
+                return supports and total > 0, total
+        except Exception:
+            return False, 0
+
+    async def _download_http_segmented(self, name: str, url: str, dest_dir: Path,
+                                       total: int, num_segments: int = None):
+        """Descarga HTTP genérica en N segmentos paralelos (Range).
+
+        Usado para hosts con Accept-Ranges que no son Pixeldrain: acelera
+        descargas grandes con varias conexiones al mismo servidor.
+        Devuelve None si no correspondía segmentar (para volver al single).
+        """
+        if num_segments is None:
+            num_segments = SEGMENTED_SEGMENTS
+        if total < SEGMENTED_MIN_SIZE:
+            return None
+        ext = _guess_extension_from_url(url)
+        safe_name = name.replace(" ", "_")
+        if not safe_name.lower().endswith(ext.lower()):
+            safe_name = f"{safe_name}{ext}"
+        dest = dest_dir / safe_name
+        temp = dest.with_suffix(".tmp")
+        try:
+            # Reanudación: si el temporal ya está completo, considerar listo.
+            if temp.exists() and temp.stat().st_size == total:
+                if validate_downloaded_file(temp, total):
+                    if dest.exists():
+                        dest.unlink()
+                    temp.rename(dest)
+                    self._emit_completed(name, True, total)
+                    return True
+
+            self._emit_progress(name, 0, _("descarga.status_descargando_segmentos"), 0, total)
+            if temp.exists():
+                temp.unlink()
+            with open(temp, "wb") as f:
+                f.truncate(total)
+
+            downloaded = 0
+            lock = threading.Lock()
+            last_report = [datetime.now().timestamp(), 0]
+            stop_event = threading.Event()
+
+            def on_chunk(size):
+                nonlocal downloaded
+                with lock:
+                    downloaded += size
+                    now = datetime.now().timestamp()
+                    if now - last_report[0] >= 1:
+                        speed = (downloaded - last_report[1]) / (now - last_report[0]) / (1024 * 1024)
+                        last_report[0] = now
+                        last_report[1] = downloaded
+                        pct = _safe_pct((downloaded / total) * 100)
+                        remaining = total - downloaded
+                        eta_sec = _safe_eta(remaining / (speed * 1024 * 1024)) if speed > 0 else 0
+                        eta_str = _format_eta(eta_sec)
+                        self._emit_progress(name, pct,
+                            f"{downloaded // (1024*1024)}MB / {total // (1024*1024)}MB - {speed:.1f} MB/s | ETA: {eta_str}", downloaded, total)
+
+            segment_size = total // num_segments
+            ranges = []
+            for i in range(num_segments):
+                start = i * segment_size
+                end = start + segment_size - 1 if i < num_segments - 1 else total - 1
+                ranges.append((start, end))
+
+            loop = asyncio.get_running_loop()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=num_segments) as executor:
+                futures = [loop.run_in_executor(executor, _download_segment, url, start, end, temp, on_chunk, stop_event) for start, end in ranges]
+                results = await asyncio.gather(*futures)
+
+            if not all(results):
+                raise Exception("Algunos segmentos fallaron")
+
+            if stop_event.is_set():
+                raise Exception("Descarga cancelada")
+
+            if not validate_downloaded_file(temp, total):
+                raise Exception("Archivo descargado inválido")
+
+            if dest.exists():
+                dest.unlink()
+            temp.rename(dest)
+            self._emit_progress(name, 100,
+                f"{total // (1024*1024)}MB / {total // (1024*1024)}MB - 0.0 MB/s | ETA: 0s", total, total)
+            self._emit_completed(name, True, total)
+            return True
+        except Exception as e:
+            logger.warning("Error segmentado %s: %s", name, e)
+            try:
+                temp.unlink(missing_ok=True)
+            except Exception:
+                pass
+            # Fallar afuera NO: volvemos None para que el llamador use single.
+            return None
 
     def _fallback_download_sync(self, name, url, dest, temp, dest_dir):
         req = urllib.request.Request(url, headers=_http_headers(url))

@@ -13,6 +13,7 @@ from services.resolver_gateway import (
     is_swisstransfer_url,
     is_workupload_url,
     is_pixeldrain_url,
+    is_seyarabata_url,
 )
 
 
@@ -40,6 +41,8 @@ def describe_method(app: str, method: str = None) -> str:
         return "swisstransfer"
     if is_workupload_url(link):
         return "workupload"
+    if is_seyarabata_url(link):
+        return "seyarabata"
     if resolved_method == "torrent":
         return "torrent"
     host = urllib.parse.urlparse(link).netloc

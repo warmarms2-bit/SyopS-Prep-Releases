@@ -177,7 +177,11 @@ def clarify_mentions(text: str, apps: list) -> str:
 
 
 def bypass_pixeldrain_sirve(file_id: str, timeout: int = 8) -> bool:
-    """True si algún mirror bypass sirve el archivo (no HTML)."""
+    """True si algún mirror bypass sirve el archivo (no HTML).
+
+    Usa HEAD (no GET) para no traer el cuerpo del archivo: el chequeo es
+    rápido aunque el archivo pese 11 GB.
+    """
     from services.resolver_gateway import PIXELDRAIN_BYPASS_HOSTS
     import urllib.request
     for host in PIXELDRAIN_BYPASS_HOSTS:
@@ -185,6 +189,7 @@ def bypass_pixeldrain_sirve(file_id: str, timeout: int = 8) -> bool:
             req = urllib.request.Request(
                 f"https://{host}/{file_id}",
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+                method="HEAD",
             )
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 ct = resp.headers.get("content-type", "")

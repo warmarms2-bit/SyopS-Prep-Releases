@@ -50,7 +50,8 @@ class DownloadTask:
 
 
 class DownloadManager:
-    task_progress = Signal(str, int, str)
+    # name, pct, status, downloaded_bytes, total_bytes
+    task_progress = Signal(str, int, str, int, int)
     # El tercer parametro es el tamaño en bytes; se usa int (64 bits en
     # Python) — con Qt no hay qint64, no hay limite.
     task_completed = Signal(str, bool, int)
@@ -158,7 +159,7 @@ class DownloadManager:
                     if total > 0:
                         task.total = total
                         task.downloaded = downloaded
-                    self.task_progress.emit(name, pct, status)
+                    self.task_progress.emit(name, pct, status, downloaded, total)
                     # Refrescar la cola global en cada evento para que la barra
                     # de progreso total y el contador X/Y avancen en tiempo real.
                     try:
@@ -193,7 +194,7 @@ class DownloadManager:
                 pass
 
             try:
-                self.task_progress.emit(task.name, 0, _("descarga.status_descargando"))
+                self.task_progress.emit(task.name, 0, _("descarga.status_descargando"), task.downloaded, task.total)
                 self._emit_queue()
 
                 if resolved_url.startswith("file://"):
@@ -203,7 +204,7 @@ class DownloadManager:
                     size = local_path.stat().st_size
                     task.total = size
                     task.downloaded = size
-                    self.task_progress.emit(task.name, 100, _("descarga.descarga_completada"))
+                    self.task_progress.emit(task.name, 100, _("descarga.descarga_completada"), size, size)
                     on_complete(task.name, True, size)
                     success = True
                 elif task.method == "torbox":
@@ -303,9 +304,10 @@ class DownloadManager:
         def poll_cb(name, pct):
             task.progress = int(pct)
             self.task_progress.emit(task.name, int(pct),
-                                    _("descarga.torbox_procesando", pct=int(pct)))
+                                    _("descarga.torbox_procesando", pct=int(pct)),
+                                    task.downloaded, task.total)
 
-        self.task_progress.emit(task.name, 0, _("descarga.torbox_conectando"))
+        self.task_progress.emit(task.name, 0, _("descarga.torbox_conectando"), 0, 0)
         result = await asyncio.to_thread(
             torbox_provider.resolve_to_direct_url,
             task.url_or_magnet,
@@ -316,7 +318,7 @@ class DownloadManager:
         if not direct_url:
             raise Exception(_("descarga.error_torbox_sin_link"))
 
-        self.task_progress.emit(task.name, 100, _("descarga.torbox_descargando"))
+        self.task_progress.emit(task.name, 100, _("descarga.torbox_descargando"), 0, 0)
         await self.engine.download_http(task.name, direct_url, task.dest_dir)
 
     def cancel_all(self):

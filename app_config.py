@@ -1,4 +1,4 @@
-APP_VERSION = "1.3.8"
+APP_VERSION = "1.3.9"
 WHATSAPP_DISPLAY = "+51 955 242 837"
 
 # ── CONFIGURACION GENERAL ─────────────────────────────────────────
