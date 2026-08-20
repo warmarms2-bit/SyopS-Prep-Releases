@@ -48,6 +48,7 @@ from catalog.data import (
 )
 from catalog.categorias import OFFICE_APPS, _expand_office_for_display
 from catalog.specs import INSTALL_QUESTIONS, INSTALL_INSTRUCTIONS
+from services.server_catalog import fetch_catalog_index, build_catalog
 from system.specs import _format_specs_line, _compatibility_lines
 from catalog.adobe import ADOBE_METHODS
 from catalog.adobe_helpers import _adobe_tools_for_method
@@ -254,7 +255,29 @@ class Wizard:
         from app_flow import FlujoMotor
         self.client_id = get_machine_id()
         self.hwid = get_hwid()
-        self.motor = FlujoMotor(self.client_id, self.hwid, IS_MAC, IS_WIN)
+        self.motor = FlujoMotor(
+            self.client_id, self.hwid, IS_MAC, IS_WIN,
+            catalogo=self._load_catalog(),
+        )
+        self._catalog = self.motor.catalogo
+
+    def _load_catalog(self):
+        """Catálogo de categorías servido por la hoja `Links`.
+
+        Fetch de `get_catalog_index` (solo nombres/categorías, sin URLs).
+        Si el backend no responde, no trae nada para este SO o el fetch está
+        deshabilitado (SYOPS_NO_CATALOG_FETCH), cae al catálogo local.
+        """
+        if os.environ.get("SYOPS_NO_CATALOG_FETCH"):
+            return None
+        server = (os.environ.get("SYOPS_LINK_SERVER", "").strip()
+                  or LINK_SERVER_URL).strip()
+        items = fetch_catalog_index(server)
+        if items is None:
+            return None
+        os_key = "mac" if IS_MAC else "win"
+        from catalog.data import SOFTWARE_CATEGORIES
+        return build_catalog(items, os_key, SOFTWARE_CATEGORIES)
 
     def _link_provider(self):
         """Proveedor de links (Tier 1.5) si hay un Google Apps Script configurado.
@@ -412,14 +435,29 @@ class Wizard:
         print()
 
     # ── Paso 3: categoría ──────────────────────────────────────────
+    def _cat_label(self, key) -> str:
+        """Label de pantalla de una categoría (servida o local)."""
+        src = self._catalog or SOFTWARE_CATEGORIES
+        info = src.get(key, {}) or {}
+        if info.get("label"):
+            return str(info["label"])
+        return _(info.get("label_key") or key)
+
     def choose_category(self):
-        cats = [(k, v) for k, v in SOFTWARE_CATEGORIES.items() if k != "all"]
+        src = self._catalog or SOFTWARE_CATEGORIES
+        cats = [(k, v) for k, v in src.items()
+                if k != "all" and v.get("apps")]
         _sep()
         print(_c(_B + "  ELEGÍ UNA CATEGORÍA", _CY))
         _sep()
+        from app_flow.flujo import platform_apps
         for i, (key, info) in enumerate(cats, 1):
-            label = _(info.get("label_key", key))
-            from app_flow.flujo import platform_apps
+            if "label" in info and info.get("label"):
+                label = info["label"]
+            elif "label_key" in info and info.get("label_key"):
+                label = _(info["label_key"])
+            else:
+                label = _(info.get("label_key", key))
             n = len(platform_apps(info.get("apps", []), IS_MAC, IS_WIN))
             print(f"  {_c(str(i).rjust(2), _CY)}. {label:<30} {_c(f'({n} programas)', _D)}")
         while True:
@@ -471,7 +509,8 @@ class Wizard:
         """Elige apps de la categoría actual ACUMULANDO sobre la selección
         previa (multi-categoría), respetando el límite del plan."""
         while True:
-            all_apps = list(SOFTWARE_CATEGORIES[self.cat]["apps"])
+            src = self._catalog or SOFTWARE_CATEGORIES
+            all_apps = list(src[self.cat]["apps"])
             # Solo apps con link para el SO actual (regla del esqueleto).
             apps = self.motor.apps_actuales or []
             if not all_apps:
@@ -492,7 +531,7 @@ class Wizard:
         print(_c(_B + "  SELECCIÓN DE PROGRAMAS", _CY))
         print(_c(f"  Elegidos: {len(self.selected_apps)}/{self.max_apps} | "
                  f"plataforma: {_OS_NAME} | categoría actual: "
-                 f"{_(SOFTWARE_CATEGORIES[self.cat]['label_key'])}", _D))
+                 f"{self._cat_label(self.cat)}", _D))
         _sep()
         _list_apps(apps, already=self.selected_apps)
         if hidden:

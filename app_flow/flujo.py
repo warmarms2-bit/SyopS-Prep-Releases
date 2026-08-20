@@ -223,12 +223,16 @@ class FlujoMotor:
     """Máquina de estados del flujo, agnóstica de presentación."""
 
     def __init__(self, client_id: str, hwid: str,
-                 is_mac: bool = IS_MAC, is_win: bool = IS_WIN):
+                 is_mac: bool = IS_MAC, is_win: bool = IS_WIN,
+                 catalogo: dict | None = None):
         self.state = FlujoEstado()
         self.client_id = client_id
         self.hwid = hwid
         self.is_mac = is_mac
         self.is_win = is_win
+        # Catálogo de categorías provisto por el servidor (hoja Links).
+        # None = catálogo local (SOFTWARE_CATEGORIES).
+        self.catalogo = catalogo
 
     # ── Acciones sobre el estado ──────────────────────────────────
     def elegir_categoria(self, categoria: str):
@@ -295,15 +299,17 @@ class FlujoMotor:
         from catalog.data import SOFTWARE_CATEGORIES
         if not self.state.categoria:
             return []
+        src = self.catalogo or SOFTWARE_CATEGORIES
         return platform_apps(
-            SOFTWARE_CATEGORIES.get(self.state.categoria, {}).get("apps", []),
+            src.get(self.state.categoria, {}).get("apps", []),
             self.is_mac, self.is_win,
         )
 
     @property
     def ocultas(self) -> list:
         from catalog.data import SOFTWARE_CATEGORIES
-        all_apps = SOFTWARE_CATEGORIES.get(self.state.categoria, {}).get("apps", [])
+        src = self.catalogo or SOFTWARE_CATEGORIES
+        all_apps = src.get(self.state.categoria, {}).get("apps", [])
         return [a for a in all_apps if a not in self.apps_actuales]
 
     def pregunta_adobe_pendiente(self) -> bool:
