@@ -265,6 +265,12 @@ class DownloadManager:
         except Exception:
             await coro
             dl = None
+            # La coroutine ya terminó; si no emitió completed, no esperar el
+            # future para siempre.
+            if not future.done():
+                task.status = "failed"
+                task.error_msg = _("descarga.error_durante_descarga")
+                return False
 
         while not future.done():
             # Stall: sin avance de bytes dentro del timeout.
@@ -289,6 +295,14 @@ class DownloadManager:
                 if exc is not None:
                     task.status = "failed"
                     task.error_msg = str(exc)[:120]
+                    return False
+                # El engine retornó sin lanzar excepción pero el `future` no
+                # quedó marcado (p.ej. ruta cancelada o que retorna sin emitir
+                # completion). Si no salimos acá, el `while` de abajo espera
+                # el future para siempre → descarga "colgada" sin finalizar.
+                if not future.done():
+                    task.status = "failed"
+                    task.error_msg = _("descarga.error_durante_descarga")
                     return False
             await asyncio.sleep(1)
 
