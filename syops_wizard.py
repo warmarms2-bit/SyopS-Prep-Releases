@@ -676,6 +676,7 @@ class Wizard:
             print(_c("  Volvé a empezar la selección.", _YE))
             self.selected_apps = []
             return False
+        self._send_selection(display)
         return True
 
     def _show_method_sections(self):
@@ -794,6 +795,14 @@ class Wizard:
             apps = apps or self.selected_apps
             method = self.adobe_method or _method_label(apps[0]) if apps else ""
             self._sheets.send_completed(apps=apps, method=method, hwid=self.hwid)
+        except Exception:
+            pass
+
+    def _send_selection(self, apps):
+        """Reporta las apps seleccionadas (confirmadas) a la sesión (Sheet), para
+        que al copiar la sesión a Clientes quede la columna 'apps' poblada."""
+        try:
+            self._sheets.send_selection(apps, self.adobe_method or "")
         except Exception:
             pass
 
