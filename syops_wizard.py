@@ -498,6 +498,13 @@ class Wizard:
             print(_c(f"  (ocultos por no estar disponibles en {_OS_NAME}: "
                      f"{', '.join(hidden)})", _D))
         print()
+        print(_c("  ─ Comandos ─", _D))
+        print(_c("    números  = elegir programas de esta categoría (ej: 1,3,5 o 1-3)", _D))
+        if self.selected_apps:
+            print(_c("    r        = quitar programas ya elegidos (deseleccionar)", _D))
+        print(_c("    0        = salir de esta categoría sin agregar (volver a elegir)", _D))
+        print(_c("    q        = salir del asistente", _D))
+        print()
 
         # Menú: números = agregar, "0" = salir de esta categoría,
         # "r" = quitar programas ya elegidos (deseleccionar).
