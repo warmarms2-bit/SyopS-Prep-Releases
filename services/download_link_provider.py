@@ -78,3 +78,23 @@ class DownloadLinkProvider:
             raise DownloadLinkError(data.get("error") or "respuesta inválida")
         data["url"] = f"{self.base_url}{data['url']}"
         return data
+
+
+def fetch_tools_map(sheets_url: str, timeout: int = 15) -> list:
+    """Obtiene el mapping tool→apps_destino desde la hoja Links (GET).
+
+    Devuelve lista de dicts ``[{name, apps_destino}, ...]`` de las filas
+    ``kind=tool``.  Se usa en el planner para saber qué tools acompañan a
+    cada app sin hardcodear.
+    """
+    sep = "&" if "?" in sheets_url else "?"
+    url = f"{sheets_url}{sep}action=get_tools_map"
+    req = urllib.request.Request(url, headers={"User-Agent": "SyopsWizard/1.3"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        return []
+    if not isinstance(data, dict) or data.get("status") != "ok":
+        return []
+    return data.get("tools", [])

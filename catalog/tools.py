@@ -64,17 +64,20 @@ for _steinberg_app in ("Cubase Pro", "Nuendo", "Dorico Pro", "WaveLab Pro",
 del _steinberg_app
 
 
-def _app_tools_for_app(app: str) -> list:
-    """Devuelve la lista de tools que acompañan a la app (consolida fuentes).
+def _app_tools_for_app(app: str, sheet_items: list = None) -> list:
+    """Devuelve la lista de tools que acompañan a la app.
 
-    Fuentes de tools por app:
-      1. APP_TOOLS        — registro manual declarativo (fuente principal)
-      2. ADOBE_PATCHERS_SICE — patcher por app Adobe (Photoshop, Illustrator...)
-      3. OFFICE_CORE_APPS — components core que acompañan a Office (MAU, Serializer)
-      4. ADOBE_TOOLS      — tools del método Adobe que aplican a esa app
+    Si se provee ``sheet_items`` (lista de dicts de la hoja Links), arma el
+    mapping tool→apps desde la columna ``apps_destino`` y lo usa como fuente
+    principal.  Si no, cae al hardcode local (APP_TOOLS / ADOBE / OFFICE).
 
     Cada ítem: {name, url, doc?, required?, source}
     """
+    # ── Modo hoja: leer de apps_destino ──────────────────────────────
+    if sheet_items is not None:
+        return _tools_from_sheet(app, sheet_items)
+
+    # ── Modo offline (fallback hardcode) ─────────────────────────────
     tools = list(APP_TOOLS.get(app, []))
 
     try:
@@ -94,7 +97,6 @@ def _app_tools_for_app(app: str) -> list:
                 "source": "adobe_patcher",
                 "required": True,
             })
-        # Sentinel es tool común de todos los métodos Adobe.
         if "Sentinel" in ADOBE_TOOLS:
             cfg = ADOBE_TOOLS["Sentinel"]
             tools.append({
@@ -120,7 +122,6 @@ def _app_tools_for_app(app: str) -> list:
                 "required": True,
             })
 
-    # Sub-apps de Office (Word, Excel...) heredan las tools de Office.
     try:
         from catalog.categorias import OFFICE_CORE_APPS, OFFICE_APPS
         from catalog.urls import _DOWNLOAD_URLS_MAC
@@ -140,31 +141,78 @@ def _app_tools_for_app(app: str) -> list:
     return tools
 
 
-def _all_app_tools() -> list:
-    """Devuelve lista plana de todas las tools registradas (con 'app').
-    Incluye las fuentes consolidadas: APP_TOOLS, patchers Adobe, Office core.
+def _tools_from_sheet(app: str, items: list) -> list:
+    """Arma tools para ``app`` desde la hoja Links (columna apps_destino).
+
+    Lee cada fila con ``kind=tool``, parsea ``apps_destino`` (comma-separated)
+    y si ``app`` está en esa lista, agrega la tool al resultado.
     """
+    import re
+    tools = []
+    for row in items:
+        if not isinstance(row, dict):
+            continue
+        kind = (row.get("kind") or "").strip().lower()
+        if kind != "tool":
+            continue
+        destino_raw = (row.get("apps_destino") or "").strip()
+        if not destino_raw:
+            continue
+        destinos = {d.strip().casefold() for d in re.split(r",\s*", destino_raw) if d.strip()}
+        if app.casefold() in destinos:
+            tools.append({
+                "name": (row.get("nombre") or "").strip(),
+                "url": (row.get("url") or "").strip(),
+                "doc": "",
+                "required": True,
+                "source": "sheet",
+            })
+    return tools
+
+
+def _all_app_tools(sheet_items: list = None) -> list:
+    """Devuelve lista plana de todas las tools registradas (con 'app')."""
     result = []
-    for app in _apps_with_tools():
-        for t in _app_tools_for_app(app):
+    for app in _apps_with_tools(sheet_items):
+        for t in _app_tools_for_app(app, sheet_items):
             result.append(dict(t, app=app))
     return result
 
 
-def _apps_with_tools() -> set:
-    """Set de apps que tienen al menos una tool registrada (cualquier fuente)."""
+def _apps_with_tools(sheet_items: list = None) -> set:
+    """Set de apps que tienen al menos una tool registrada.
+
+    Con ``sheet_items`` usa la hoja como fuente; sin ella, el hardcode local.
+    """
+    if sheet_items is not None:
+        import re
+        apps = set()
+        for row in sheet_items:
+            if not isinstance(row, dict):
+                continue
+            kind = (row.get("kind") or "").strip().lower()
+            if kind != "tool":
+                continue
+            destino_raw = (row.get("apps_destino") or "").strip()
+            if not destino_raw:
+                continue
+            for d in re.split(r",\s*", destino_raw):
+                d = d.strip()
+                if d:
+                    apps.add(d)
+        return apps
+
     apps = set(APP_TOOLS.keys())
     try:
         from catalog.adobe import ADOBE_PATCHERS_SICE, ADOBE_APPS
         apps.update(ADOBE_PATCHERS_SICE.keys())
-        # Todos los Adobe usan al menos Sentinel como tool del método.
         apps.update(ADOBE_APPS)
     except Exception:
         pass
     apps.add("Office")
     try:
         from catalog.categorias import OFFICE_APPS
-        apps.update(OFFICE_APPS)  # Word, Excel, PowerPoint... heredan tools
+        apps.update(OFFICE_APPS)
     except Exception:
         pass
     return apps

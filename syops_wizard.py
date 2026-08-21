@@ -1046,10 +1046,14 @@ class Wizard:
             return 0
 
         from services.download_planner import plan_downloads
+        from services.download_link_provider import fetch_tools_map
+        from app_config import SHEETS_URL
+        sheet_items = fetch_tools_map(SHEETS_URL) if SHEETS_URL else []
         plan = plan_downloads(download_apps, output_dir,
                               self.adobe_method or "macked",
                               link_provider=self._link_provider(),
-                              platform="mac" if IS_MAC else "win")
+                              platform="mac" if IS_MAC else "win",
+                              sheet_items=sheet_items)
         for w in plan.warnings:
             print(_c(f"  ⚠ {w}", _YE))
         if not plan.tasks:
@@ -1410,17 +1414,13 @@ class Wizard:
         _sep()
         print(_c(_B + "  ACTUALIZACIÓN DISPONIBLE", _YE))
         print(f"  Versión actual: {actual} → nueva: {nueva}")
-        print("  La actualización no borra tus datos, activación ni descargas.")
+        print("  Actualizando automáticamente...")
         _sep()
-        if _yes_no("¿Actualizar ahora?", default="n"):
-            ok, msg = apply_update()
-            print(_c(("  ✓ " if ok else "  ✗ ") + msg, _GR if ok else _RD))
-            if ok:
-                _ask("Presioná Enter para cerrar y reiniciar con la versión nueva")
-                raise SystemExit(0)
-        else:
-            print(_c("  Te quedás con la versión actual por ahora.", _D))
-        print()
+        ok, msg = apply_update()
+        print(_c(("  ✓ " if ok else "  ✗ ") + msg, _GR if ok else _RD))
+        if ok:
+            _ask("Presioná Enter para cerrar y reiniciar con la versión nueva")
+            raise SystemExit(0)
 
     def run(self):
         """Flujo lineal (como antes): inicio → guiado → fin."""

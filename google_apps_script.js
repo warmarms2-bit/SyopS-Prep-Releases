@@ -30,6 +30,11 @@
 const SHEET_NAME_SESSIONS = "Sesiones";
 const SHEET_NAME_CLIENTS = "Clientes";
 const SHEET_NAME_ERRORS = "Errores";
+const SHEET_NAME_BACKUPS = "Backups";
+
+// Headers de la hoja Backups: nombre, plataforma, metodo, url, resolver, prioridad
+// prioridad: entero, menor = intenta primero. Vacío = 0 (último recurso).
+const BACKUP_HEADERS = ["nombre", "plataforma", "metodo", "url", "resolver", "prioridad"];
 
 const ACTIVATION_STATUS_AVAILABLE = "disponible";
 const ACTIVATION_STATUS_USED = "usado";
@@ -536,6 +541,7 @@ function onOpen() {
     .addSeparator()
     .addItem("Configurar secret de activación", "setActivationSecretMenu")
     .addItem("Resetear hojas (borrar todo)", "resetAllSheetsMenu")
+    .addItem("Gestionar backups", "manageBackupsMenu")
     .addToUi();
 }
 
@@ -588,6 +594,71 @@ function resetAllSheets() {
   getOrCreateSheet(SHEET_NAME_SESSIONS, getSessionHeaders());
   getOrCreateSheet(SHEET_NAME_CLIENTS, getClientHeaders());
   getOrCreateSheet(SHEET_NAME_ERRORS, getErrorHeaders());
+  // También recreamos la hoja de backups con headers vacíos
+  getOrCreateSheet(SHEET_NAME_BACKUPS, BACKUP_HEADERS);
+}
+
+function manageBackupsMenu() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.prompt(
+    "Gestión de Backups",
+    "Selecciona una acción:\n\n" +
+    "1. Ver backups\n" +
+    "2. Agregar backup manual (pedirá datos)\n" +
+    "3. Eliminar backup por nombre/plataforma\n" +
+    "4. Limpiar todos los backups",
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (response.getSelectedButton() !== ui.Button.OK) return;
+  const op = Number(response.getResponseText());
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const bs = ss.getSheetByName(SHEET_NAME_BACKUPS) || getOrCreateSheet(SHEET_NAME_BACKUPS, BACKUP_HEADERS);
+  const bheaders = bs.getRange(1, 1, 1, BACKUP_HEADERS.length).getValues()[0];
+  switch (op) {
+    case 1: // Ver backups
+      const bd = bs.getDataRange().getValues();
+      let txt = "Backups (" + (bd.length - 1) + "):\n";
+      for (let i = 1; i < bd.length; i++) {
+        txt += String(bd[i][0] || "-") + " | " + String(bd[i][1] || "-") + " | " + String(bd[i][3] || "-").substring(0, 30) + "\n";
+      }
+      ui.alert("Backups", txt, ui.ButtonSet.OK);
+      break;
+    case 2: // Agregar backup manual
+      const r = ui.prompt("Agregar backup", "Nombre|Plataforma|Método|URL|Resolvedor|Prioridad (número entero, menor=primario)");
+      if (r.getSelectedButton() !== ui.Button.OK) break;
+      const responseTxt = r.getResponseText();
+      const parts = responseTxt.split("|").map(s => s.trim());
+      if (parts.length >= 5 && parts[0] && parts[1] && parts[3]) {
+        const nextRow = bs.getLastRow();
+        bs.getRange(nextRow + 1, 1, 1, BACKUP_HEADERS.length).setValues([parts.concat([parts.length > 5 ? Number(parts[5]) || 0 : 0])]);
+        ui.alert("OK", "Backup guardado.", ui.ButtonSet.OK);
+      } else {
+        ui.alert("Error", "Formato inválido: Nombre|Plataforma|Método|URL|Resolvedor|Prioridad", ui.ButtonSet.OK);
+      }
+      break;
+    case 3: // Eliminar por nombre/plataforma
+      const r2 = ui.prompt("Eliminar backup", "Nombre o plataforma a borrar:");
+      if (r2.getSelectedButton() !== ui.Button.OK) break;
+      const term = r2.getResponseText().trim().toLowerCase();
+      const vd = bs.getDataRange().getValues();
+      let borraron = 0;
+      for (let i = vd.length - 1; i >= 1; i--) {
+        const nombre = String(vd[i][0] || "").trim().toLowerCase();
+        const plataforma = String(vd[i][1] || "").trim().toLowerCase();
+        if (nombre === term || plataforma === term) {
+          bs.deleteRow(i + 1);
+          borraron++;
+        }
+      }
+      ui.alert("Hecho", "Borrados " + borraron + " backup(s).", ui.ButtonSet.OK);
+      break;
+    case 4: // Limpiar todos
+      if (ui.alert("Confirmar", "¿Borrar TODOS los backups?", ui.ButtonSet.YES_NO) === ui.Button.YES) {
+        bs.clearContents();
+        ui.alert("Hecho", "Backups borrados.", ui.ButtonSet.OK);
+      }
+      break;
+  }
 }
 
 function getIsoWeek(date) {
@@ -824,7 +895,7 @@ function getLinkHeaders() {
   //     en el menú de selección (se invocan según la app elegida); el resto
   //     de valores (o vacío) = app normal con link.
   return ["nombre", "metodo", "plataforma", "url", "resolver",
-          "categoria", "categoria_seleccion", "kind"];
+          "categoria", "categoria_seleccion", "kind", "apps_destino"];
 }
 
 function findLinkEntry(name, method, platform) {
@@ -1134,6 +1205,112 @@ function updateLinkAction(data) {
   });
 }
 
+// ═══ BACKUPS ════════════════════════════════════════════════════════════
+function manageBackupsAction(data) {
+  // El caller (handleDataAction) establece data.action = "manage_backups";
+  // Usamos data.sub_action para la operación interna (get / add / update / delete).
+  const action = String(data.sub_action || data.action || "").toLowerCase();
+  if (action === "get") {
+    return getBackupsAction(data);
+  }
+  if (action === "add") {
+    return addBackupAction(data);
+  }
+  if (action === "update") {
+    return updateBackupAction(data);
+  }
+  if (action === "delete") {
+    return deleteBackupAction(data);
+  }
+  return jsonResponse({ status: "error", message: "Operación de backup desconocida: " + action }, 400);
+}
+
+function getBackupsAction(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME_BACKUPS);
+  if (!sheet) {
+    return jsonResponse({ status: "ok", backups: [] });
+  }
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const rows = sheet.getDataRange().getValues();
+  const backups = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = {};
+    for (let j = 0; j < Math.min(BACKUP_HEADERS.length, headers.length); j++) {
+      row[BACKUP_HEADERS[j]] = String(rows[i][j] || "").trim();
+    }
+    if (row.prioridad === "" || isNaN(Number(row.prioridad))) {
+      row.prioridad = "0";
+    }
+    backups.push(row);
+  }
+  backups.sort((a, b) => Number(a.prioridad) - Number(b.prioridad));
+  return jsonResponse({ status: "ok", backups: backups });
+}
+
+function addBackupAction(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME_BACKUPS);
+  if (!sheet) {
+    sheet = getOrCreateSheet(SHEET_NAME_BACKUPS, BACKUP_HEADERS);
+  }
+  const nombre = String(data.nombre || "").trim();
+  const plataforma = String(data.plataforma || "").trim();
+  const metodo = String(data.metodo || "").trim();
+  const url = String(data.url || "").trim();
+  const resolver = String(data.resolver || "").trim();
+  const prioridad = Number(data.prioridad) || 0;
+  if (!nombre || !plataforma || !url) {
+    return jsonResponse({ status: "error", message: "Faltan nombre, plataforma o URL" }, 400);
+  }
+  const nextRow = Math.max(sheet.getLastRow(), 1) + 1;
+  sheet.getRange(nextRow, 1, 1, BACKUP_HEADERS.length).setValues([[nombre, plataforma, metodo, url, resolver, prioridad]]);
+  return jsonResponse({ status: "ok", backup: { nombre, plataforma, metodo, url, resolver, prioridad } });
+}
+
+function updateBackupAction(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME_BACKUPS);
+  if (!sheet) return jsonResponse({ status: "error", message: "Hoja Backups no existe" }, 404);
+  const nombre = String(data.nombre || "").trim();
+  const plataforma = String(data.plataforma || "").trim();
+  const nuevoUrl = String(data.url || "").trim();
+  if (!nombre) return jsonResponse({ status: "error", message: "Falta nombre" }, 400);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const rNombre = String(rows[i][0] || "").trim();
+    const rPlataforma = String(rows[i][1] || "").trim();
+    if (rNombre === nombre && rPlataforma === plataforma) {
+      sheet.getRange(i + 1, 4).setValue(nuevoUrl);
+      return jsonResponse({ status: "ok", url: nuevoUrl });
+    }
+  }
+  return jsonResponse({ status: "error", message: "Backup no encontrado" }, 404);
+}
+
+function deleteBackupAction(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME_BACKUPS);
+  if (!sheet) return jsonResponse({ status: "error", message: "Hoja Backups no existe" }, 404);
+  const nombre = String(data.nombre || "").trim().toLowerCase();
+  const plataforma = String(data.plataforma || "").trim().toLowerCase();
+  const rows = sheet.getDataRange().getValues();
+  let borraron = 0;
+  for (let i = rows.length - 1; i >= 1; i--) {
+    const rNombre = String(rows[i][0] || "").trim().toLowerCase();
+    const rPlataforma = String(rows[i][1] || "").trim().toLowerCase();
+    if (rNombre === nombre || rPlataforma === plataforma) {
+      sheet.deleteRow(i + 1);
+      borraron++;
+    }
+  }
+  // FIX: la variable se llama "borraron" (no "borrados"); antes esto
+  // tiraba ReferenceError en cuanto se invocaba delete.
+  return jsonResponse({ status: "ok", borrados: borraron });
+}
+
+// ═══ ENDPOINTS PRINCIPALES ═════════════════════════════════════════════════════════
+
 // ═══ DECODIFICACIÓN DE PETICIONES (POST O GET fallback) ═══════════════════
 
 function getRequestData(e) {
@@ -1171,16 +1348,33 @@ function handleDataAction(data, sessionsSheet, errorsSheet) {
   const hwid = data.hwid || "";
   const sessionHeaders = getSessionHeaders();
 
+  // ── Backups: bypass anti-spam (requiere clave de vendedor) ────────────
+  if (action === "manage_backups") {
+    if (!sellerKeyOk(data.key)) {
+      return jsonResponse({ status: "error", message: "Clave de vendedor inválida" }, 403);
+    }
+    const choice = String(data.sub_action || "").trim();
+    const sub = Number(choice) ? Number(choice) : null;
+    let sub_action = null;
+    if (sub === 1) sub_action = "get";
+    else if (sub === 2) sub_action = "add";
+    else if (sub === 3) sub_action = "update";
+    else if (sub === 4) sub_action = "delete";
+    const newData = Object.assign({}, data, { sub_action: sub_action });
+    return manageBackupsAction(newData);
+  }
+
   // ── Fase 5: validación anti-spam de escrituras ─────────────────
   // Los endpoints de escritura aceptan cualquier POST sin auth: cualquiera
   // podría ensuciar la hoja. Validamos identificadores de formato del cliente
   // (client_id/hwid = md5 hex[:12].upper()) y limitamos escrituras por minuto.
   const HEX_RE = /^[0-9A-Fa-f]{6,32}$/;
+  const CLIENT_RE = /^[A-Za-z0-9]{4,64}$/;
   const SESSION_RE = /^[A-Za-z0-9_\-:.]{1,64}$/;
   if (clientId === "sin_cliente" && sessionId === "sin_sesion") {
     return jsonResponse({ status: "error", message: "Faltan identificadores" }, 400);
   }
-  if (clientId !== "sin_cliente" && !HEX_RE.test(clientId)) {
+  if (clientId !== "sin_cliente" && !CLIENT_RE.test(clientId)) {
     return jsonResponse({ status: "error", message: "client_id inválido" }, 400);
   }
   if (hwid && !HEX_RE.test(hwid)) {
@@ -1263,6 +1457,32 @@ function doPost(e) {
   }
 }
 
+// `get_tools_map`: mapping tool→apps_destino para el planner.
+// Devuelve [{name, apps_destino}] de filas kind=tool. No requiere clave.
+function getToolsMapAction(data) {
+  const linksSheet = getOrCreateSheet(SHEET_NAME_LINKS, getLinkHeaders());
+  const ldata = linksSheet.getDataRange().getValues();
+  const lheaders = ldata[0];
+  const nameIdx = lheaders.indexOf("nombre");
+  const kindIdx = lheaders.indexOf("kind");
+  const destIdx = lheaders.indexOf("apps_destino");
+  if (kindIdx < 0 || destIdx < 0) {
+    return jsonResponse({ status: "ok", tools: [] });
+  }
+  const tools = [];
+  for (let i = 1; i < ldata.length; i++) {
+    const row = ldata[i];
+    const kind = String(row[kindIdx] || "").trim().toLowerCase();
+    if (kind !== "tool") continue;
+    const name = String(row[nameIdx] || "").trim();
+    const destinos = String(row[destIdx] || "").trim();
+    if (name) {
+      tools.push({ name: name, apps_destino: destinos });
+    }
+  }
+  return jsonResponse({ status: "ok", tools: tools });
+}
+
 function doGet(e) {
   const action = e.parameter.action || "";
 
@@ -1293,6 +1513,12 @@ function doGet(e) {
   // vive en Script Properties (SYOPS_SELLER_KEY): sin ella, error 403.
   if (action === "get_links_seller") {
     return getLinksSellerAction(e.parameter);
+  }
+
+  // `get_tools_map`: mapping tool→apps para el planner. Devuelve SOLO
+  // nombre + apps_destino de las filas kind=tool. No requiere clave.
+  if (action === "get_tools_map") {
+    return getToolsMapAction(e.parameter);
   }
 
   // Fallback GET: si el despliegue del script no acepta POST, la app puede

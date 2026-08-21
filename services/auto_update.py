@@ -25,14 +25,14 @@ from pathlib import Path
 from app_config import APP_VERSION, UPDATE_CHECK_URL
 from catalog.base import IS_MAC, IS_WIN
 
-# URL del tarball/zip del repo público (el mismo que baja el instalador).
+# URL del tarball/zip del repo público (fallback si el gist no trae download_url).
 if IS_WIN:
-    _BUNDLE_URL = ("https://github.com/warmarms2-bit/SyopS-Prep-Releases/"
-                   "archive/refs/heads/main.zip")
+    _BUNDLE_URL_FALLBACK = ("https://github.com/warmarms2-bit/SyopS-Prep-Releases/"
+                            "archive/refs/heads/main.zip")
     _STRIP_CMD = False  # el zip trae la carpeta madre; la aplanamos
 else:
-    _BUNDLE_URL = ("https://github.com/warmarms2-bit/SyopS-Prep-Releases/"
-                   "archive/refs/heads/main.tar.gz")
+    _BUNDLE_URL_FALLBACK = ("https://github.com/warmarms2-bit/SyopS-Prep-Releases/"
+                            "archive/refs/heads/main.tar.gz")
     _STRIP_CMD = ["tar", "-xz", "--strip-components=1"]
 
 # Clave del gist (por si cambia el formato). Default razonable.
@@ -50,20 +50,35 @@ def _parse_version(raw: str) -> tuple:
     return tuple(parts) if parts else (0,)
 
 
-def fetch_latest_version(timeout: int = 8) -> str | None:
-    """Lee la versión más reciente desde el gist. None si no puede conectar."""
+def _fetch_gist_data(timeout: int = 8) -> dict | None:
+    """Lee el gist de versiones. Devuelve el dict completo o None."""
     try:
         with urllib.request.urlopen(UPDATE_CHECK_URL, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8", errors="replace"))
     except Exception:
         return None
-    if not isinstance(data, dict):
+    return data if isinstance(data, dict) else None
+
+
+def fetch_latest_version(timeout: int = 8) -> str | None:
+    """Lee la versión más reciente desde el gist. None si no puede conectar."""
+    data = _fetch_gist_data(timeout)
+    if not data:
         return None
     for key in _VERSION_KEYS:
         v = str(data.get(key, "")).strip()
         if v:
             return v
     return None
+
+
+def _get_bundle_url(data: dict | None) -> str:
+    """Devuelve la URL de descarga: del gist si la trae, si no el fallback."""
+    if data:
+        url = str(data.get("download_url", "")).strip()
+        if url:
+            return url
+    return _BUNDLE_URL_FALLBACK
 
 
 def check_for_update() -> tuple[bool, str | None, str | None]:
@@ -105,10 +120,13 @@ def apply_update(timeout: int = 120) -> tuple[bool, str]:
     # Modo desarrollo: nunca autoactualizar un repo git (se rompería el árbol).
     if (dest / ".git").exists() or dest.name.endswith("Wizard"):
         return False, "Modo desarrollo: no se autoactualiza el repo."
+    # Leer download_url del gist
+    gist_data = _fetch_gist_data()
+    bundle_url = _get_bundle_url(gist_data)
     tmp = Path(_tf.mkdtemp(prefix="syops-upd-"))
     try:
         archive = tmp / ("main.zip" if IS_WIN else "main.tar.gz")
-        with urllib.request.urlopen(_BUNDLE_URL, timeout=timeout) as resp:
+        with urllib.request.urlopen(bundle_url, timeout=timeout) as resp:
             archive.write_bytes(resp.read())
         if not archive.stat().st_size:
             return False, "La descarga de la actualización quedó vacía."

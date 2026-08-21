@@ -139,7 +139,8 @@ def _task_for_app(app: str, adobe_method: str, output_dir: Path,
 
 def plan_downloads(downloadable: list, output_dir: Path,
                    adobe_method: str = None, adobe_fullpack: bool = False,
-                   link_provider=None, platform: str = None) -> DownloadPlan:
+                   link_provider=None, platform: str = None,
+                   sheet_items: list = None) -> DownloadPlan:
     """Construye el plan de descarga completo (apps + tools Adobe + tools por app).
 
     - Full Pack: baja el collection AIO completo (ignora `downloadable`).
@@ -155,7 +156,8 @@ def plan_downloads(downloadable: list, output_dir: Path,
     """
     if link_provider is not None:
         return _plan_via_server(downloadable, output_dir, adobe_method,
-                                adobe_fullpack, link_provider, platform)
+                                adobe_fullpack, link_provider, platform,
+                                sheet_items)
 
     tasks, warnings = [], []
     tiene_adobe = any(a in ADOBE_APPS for a in downloadable)
@@ -213,7 +215,7 @@ def plan_downloads(downloadable: list, output_dir: Path,
     for app in downloadable:
         if app in ADOBE_APPS:
             continue
-        for tool in _app_tools_for_app(app):
+        for tool in _app_tools_for_app(app, sheet_items):
             tool_name = tool.get("name", app)
             if tool_name in seen_tools:
                 continue
@@ -232,7 +234,7 @@ def plan_downloads(downloadable: list, output_dir: Path,
 
 
 def _plan_via_server(downloadable, output_dir, adobe_method, adobe_fullpack,
-                     provider, platform):
+                     provider, platform, sheet_items=None):
     """Modo servidor (Tier 2): todas las URLs se piden al servidor.
 
     Solo se usan localmente los NOMBRES de apps/tools y el método; ninguna
@@ -277,7 +279,7 @@ def _plan_via_server(downloadable, output_dir, adobe_method, adobe_fullpack,
     for app in downloadable:
         if app in ADOBE_APPS:
             continue
-        for tool in _app_tools_for_app(app):
+        for tool in _app_tools_for_app(app, sheet_items):
             tool_name = tool.get("name", app)
             if tool_name in seen_tools:
                 continue
