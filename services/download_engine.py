@@ -244,7 +244,7 @@ class DownloadEngine(TorrentDownloader):
                             break
                         if dl_status in ("failed", "error"):
                             raise Exception("Surge download failed")
-                        if total > 0 and downloaded >= total and pct >= 100:
+                        if total > 0 and downloaded >= total:
                             break
                     except Exception as e:
                         if "Surge download failed" in str(e):
