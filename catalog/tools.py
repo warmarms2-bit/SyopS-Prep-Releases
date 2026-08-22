@@ -67,78 +67,14 @@ del _steinberg_app
 def _app_tools_for_app(app: str, sheet_items: list = None) -> list:
     """Devuelve la lista de tools que acompañan a la app.
 
-    Si se provee ``sheet_items`` (lista de dicts de la hoja Links), arma el
-    mapping tool→apps desde la columna ``apps_destino`` y lo usa como fuente
-    principal.  Si no, cae al hardcode local (APP_TOOLS / ADOBE / OFFICE).
+    Lee de ``sheet_items`` (lista de dicts de la hoja Links).
+    Si no hay items, devuelve lista vacía.
 
     Cada ítem: {name, url, doc?, required?, source}
     """
-    # ── Modo hoja: leer de apps_destino ──────────────────────────────
-    if sheet_items:
-        return _tools_from_sheet(app, sheet_items)
-
-    # ── Modo offline (fallback hardcode) ─────────────────────────────
-    tools = list(APP_TOOLS.get(app, []))
-
-    try:
-        from catalog.adobe import ADOBE_APPS
-    except Exception:
-        ADOBE_APPS = frozenset()
-
-    if app in ADOBE_APPS:
-        try:
-            from catalog.adobe import ADOBE_PATCHERS_SICE, ADOBE_TOOLS
-        except Exception:
-            ADOBE_PATCHERS_SICE, ADOBE_TOOLS = {}, {}
-        if app in ADOBE_PATCHERS_SICE:
-            tools.append({
-                "name": f"{app} Patcher",
-                "url": ADOBE_PATCHERS_SICE[app],
-                "source": "adobe_patcher",
-                "required": True,
-            })
-        if "Sentinel" in ADOBE_TOOLS:
-            cfg = ADOBE_TOOLS["Sentinel"]
-            tools.append({
-                "name": "Sentinel",
-                "url": cfg["url"],
-                "doc": "",
-                "source": "adobe_method_tool",
-                "required": cfg.get("required", True),
-            })
-
-    if app == "Office":
-        try:
-            from catalog.categorias import OFFICE_CORE_APPS
-            from catalog.urls import _DOWNLOAD_URLS_MAC
-        except Exception:
-            OFFICE_CORE_APPS, _DOWNLOAD_URLS_MAC = [], {}
-        for core in OFFICE_CORE_APPS:
-            url = _DOWNLOAD_URLS_MAC.get(core, "")
-            tools.append({
-                "name": core,
-                "url": url,
-                "source": "office_core",
-                "required": True,
-            })
-
-    try:
-        from catalog.categorias import OFFICE_CORE_APPS, OFFICE_APPS
-        from catalog.urls import _DOWNLOAD_URLS_MAC
-        if app in OFFICE_APPS:
-            for core in OFFICE_CORE_APPS:
-                url = _DOWNLOAD_URLS_MAC.get(core, "")
-                if url and not any(t.get("name") == core for t in tools):
-                    tools.append({
-                        "name": core,
-                        "url": url,
-                        "source": "office_core",
-                        "required": True,
-                    })
-    except Exception:
-        pass
-
-    return tools
+    if not sheet_items:
+        return []
+    return _tools_from_sheet(app, sheet_items)
 
 
 def _tools_from_sheet(app: str, items: list) -> list:

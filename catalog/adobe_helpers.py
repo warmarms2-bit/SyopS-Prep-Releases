@@ -146,11 +146,12 @@ def _adobe_download_links_for_apps(apps: list, method: str) -> list:
 def _adobe_tools_for_method(method: str, sheet_items: list = None) -> list:
     """Devuelve lista de (nombre, url) de tools necesarios para el método.
 
-    Si se provee ``sheet_items`` (del get_tools_map), usa la columna
-    ``metodos`` de la hoja como fuente principal para filtrar por método,
-    y la columna ``url`` para el link de descarga.  Si la tool NO está
-    en la hoja, usa ``ADOBE_TOOLS.for_methods`` como fallback.
+    Lee de ``sheet_items`` (del get_tools_map). Filtra por método usando
+    la columna ``metodos`` de la hoja. Si no hay items, devuelve [].
     """
+    if not sheet_items:
+        return []
+
     try:
         from catalog.tools import sheet_tool_metodos
     except ImportError:
@@ -158,30 +159,22 @@ def _adobe_tools_for_method(method: str, sheet_items: list = None) -> list:
 
     # Indexar sheet_items por nombre para acceso rápido
     sheet_by_name = {}
-    if sheet_items:
-        for item in sheet_items:
-            n = (item.get("name") or item.get("nombre") or "").strip()
-            if n:
-                sheet_by_name[n] = item
+    for item in sheet_items:
+        n = (item.get("name") or item.get("nombre") or "").strip()
+        if n:
+            sheet_by_name[n] = item
 
     result = []
     for name, cfg in ADOBE_TOOLS.items():
         sheet_item = sheet_by_name.get(name)
-        if sheet_items is not None and sheet_tool_metodos is not None and sheet_item:
+        if sheet_tool_metodos is not None and sheet_item:
             methods = sheet_tool_metodos(sheet_items, name)
             if methods:
                 if method not in methods:
                     continue
-            # Si methods está vacío (tool en hoja sin metodos), incluirla
-            # para todos los métodos.
         else:
-            # Tool NO en la hoja: usar ADOBE_TOOLS.for_methods
-            if method not in cfg.get("for_methods", []):
-                continue
-        # URL: hoja primero, fallback a hardcoded
-        url = ""
-        if sheet_item:
-            url = (sheet_item.get("url") or "").strip()
+            continue
+        url = (sheet_item.get("url") or "").strip() if sheet_item else ""
         if not url:
             url = cfg.get("url", "")
         result.append((name, url))
