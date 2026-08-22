@@ -58,15 +58,6 @@ eliminar-syops
 - Modo vista previa sin descargar
 - Soporte remoto (RustDesk)
 
-## Configuración
-
-El wizard trae todo configurado: al correr el instalador ya funciona el
-catálogo y las descargas sin pasos extra. Las variables siguientes son
-opcionales y solo para casos especiales:
-
-- `SYOPS_LINK_SERVER` — reemplaza la URL por defecto del backend de links.
-- `SYOPS_LANG` — idioma de la interfaz: `es|en` (por defecto `es`).
-
 ## Notas
 
 Este repositorio es la variante del cliente. No incluye lógica de
