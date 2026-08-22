@@ -1,4 +1,4 @@
-APP_VERSION = "1.3.30"
+APP_VERSION = "1.3.31"
 WHATSAPP_DISPLAY = "+51 955 242 837"
 
 # ── CONFIGURACION GENERAL ─────────────────────────────────────────
@@ -86,8 +86,14 @@ UPDATE_CHECK_URL = os.environ.get(
     "SYOPS_UPDATE_URL",
     "https://gist.githubusercontent.com/warmarms2-bit/e7c5bd0041d5082fdbd196842a043a55/raw/version.json",
 )
-SHEETS_URL = os.environ.get("SYOPS_SHEETS_URL", "")
-LINK_SERVER_URL = os.environ.get("SYOPS_LINK_SERVER", "")
+SHEETS_URL = os.environ.get(
+    "SYOPS_SHEETS_URL",
+    "https://script.google.com/macros/s/AKfycbw6UrjoZCtUWyb2BxQskruTQRowGIv2dXuoHrupio1-UFN7ZLq-KIctzHjZCv0ikcSo/exec",
+)
+LINK_SERVER_URL = os.environ.get(
+    "SYOPS_LINK_SERVER",
+    "https://script.google.com/macros/s/AKfycbw6UrjoZCtUWyb2BxQskruTQRowGIv2dXuoHrupio1-UFN7ZLq-KIctzHjZCv0ikcSo/exec",
+)
 
 # ── RED: TORRENT (DHT nodes + trackers públicos) ──────────────────
 # Configuración de red para descarga por torrent. Editable sin tocar
