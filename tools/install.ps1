@@ -14,7 +14,6 @@
 #
 #  Variables:
 #    -BundleUrl   URL del zip a descargar (default: GitHub main)
-#    $env:SYOPS_LINK_SERVER → URL de descarga/catálogo (opcional)
 # ═══════════════════════════════════════════════════════════════════════
 param(
     [string]$BundleUrl = "https://github.com/warmarms2-bit/SyopS-Prep-Releases/archive/refs/heads/main.zip"

@@ -3,7 +3,7 @@
 #  SyopS Prep — instalador ONE-LINER (macOS / Linux)
 #
 #  Qué hace:
-#    1. Verifica Python 3.8+ (si falta, avisa cómo instalarlo).
+#    1. Verifica Python 3.8+ (si falta, lo instala automáticamente).
 #    2. Descarga el wizard directamente desde GitHub (repo público
 #       SyopS-Prep-Releases) y lo deja en ~/"SyopS Prep".
 #    3. Crea un venv aislado (~/"SyopS Prep"/.venv). El wizard es stdlib
@@ -15,21 +15,38 @@
 #
 #  Variables de entorno:
 #    SYOPS_BUNDLE_URL   URL del tarball a descargar (default: GitHub main)
-#    SYOPS_LINK_SERVER  URL de descarga/catálogo (opcional; si no está,
-#                       el wizard corre en modo local sin descargas)
 # ═══════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
 BUNDLE_URL="${SYOPS_BUNDLE_URL:-https://github.com/warmarms2-bit/SyopS-Prep-Releases/archive/refs/heads/main.tar.gz}"
 
 # ── 1) Python ─────────────────────────────────────────────────────────
-need_python() {
-  echo "  ✗ No encontré Python 3 en PATH."
-  echo "    macOS:  xcode-select --install   (o: brew install python)"
-  echo "    Linux:  sudo apt install python3 python3-venv   (Debian/Ubuntu)"
-  echo "            sudo pacman -S python python-venv        (Arch)"
-  echo "  Volvé a correr este instalador cuando esté disponible." >&2
-  exit 1
+install_python_macos() {
+  echo "  ↓ Instalando Python 3 en macOS…"
+  if command -v brew >/dev/null 2>&1; then
+    brew install python3
+  else
+    echo "  ↓ Homebrew no encontrado. Instalando Homebrew primero…"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    brew install python3
+  fi
+}
+
+install_python_linux() {
+  echo "  ↓ Instalando Python 3 en Linux…"
+  if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update -qq && sudo apt-get install -y -qq python3 python3-venv python3-pip
+  elif command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y python3 python3-pip
+  elif command -v pacman >/dev/null 2>&1; then
+    sudo pacman -S --noconfirm python python-pip
+  elif command -v zypper >/dev/null 2>&1; then
+    sudo zypper install -y python3 python3-pip
+  else
+    echo "  ✗ No detecté gestor de paquetes compatible (apt/dnf/pacman/zypper)." >&2
+    echo "    Instalá Python 3 manualmente y volvé a correr este instalador." >&2
+    exit 1
+  fi
 }
 
 PY=""
@@ -38,8 +55,24 @@ if command -v python3 >/dev/null 2>&1; then
 elif command -v python >/dev/null 2>&1 && python -c 'import sys; sys.exit(0 if sys.version_info >= (3,8) else 1)' 2>/dev/null; then
   PY="python"
 else
-  need_python
+  echo "  Python 3 no encontrado. Intentando instalarlo automáticamente…"
+  case "$(uname -s)" in
+    Darwin) install_python_macos ;;
+    Linux)  install_python_linux ;;
+    *)      echo "  ✗ SO no reconocido. Instalá Python 3 manualmente." >&2; exit 1 ;;
+  esac
+  # Re-detectar después de instalar
+  if command -v python3 >/dev/null 2>&1; then
+    PY="python3"
+  elif command -v python >/dev/null 2>&1 && python -c 'import sys; sys.exit(0 if sys.version_info >= (3,8) else 1)' 2>/dev/null; then
+    PY="python"
+  else
+    echo "  ✗ No se pudo instalar Python 3 automáticamente." >&2
+    echo "    Instalalo manualmente y volvé a correr este instalador." >&2
+    exit 1
+  fi
 fi
+echo "  ✔ Python 3 detectado: $($PY --version 2>&1)"
 
 # ── 2) Descargar el wizard desde GitHub ───────────────────────────────
 DEST="${HOME}/SyopS Prep"
