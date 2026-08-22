@@ -280,12 +280,12 @@ class Wizard:
         return build_catalog(items, os_key, SOFTWARE_CATEGORIES)
 
     def _link_provider(self):
-        """Proveedor de links (Tier 1.5) si hay un Google Apps Script configurado.
+        """Proveedor de links (Tier 1.5) si hay un backend remoto configurado.
 
-        Lee `SYOPS_LINK_SERVER` (env, la URL /exec del Apps Script) y usa el
+        Lee `SYOPS_LINK_SERVER` (env, la URL del backend) y usa el
         código de activación guardado. Si no hay URL, devuelve None → el
         wizard resuelve localmente (Tier 1). El cliente no trae el catálogo;
-        pide cada link al script, que valida la activación en Google Sheets.
+        pide cada link al backend, que valida la activación.
         """
         server = (os.environ.get("SYOPS_LINK_SERVER", "").strip()
                   or LINK_SERVER_URL).strip()

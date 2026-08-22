@@ -442,7 +442,7 @@
     "codigo_usado": "This code has already been used. Request a new one via WhatsApp.",
     "codigo_otro_equipo": "This code is tied to another computer. Request a new one for this computer.",
     "codigo_expirado": "This code has expired. Request a new one via WhatsApp.",
-    "codigo_no_en_sheets": "This code is not registered. Make sure the operator generated it in the Sheets spreadsheet.",
+    "codigo_no_en_sheets": "This code is not registered. Make sure the operator generated it correctly.",
     "verificando": "Verifying with server...",
     "verificando_tiempo": "Verifying with server... ({segundos}s)",
     "sin_conexion": "Could not verify the code with the server. Check your internet connection and try again.",

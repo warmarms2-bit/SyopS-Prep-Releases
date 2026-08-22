@@ -92,7 +92,7 @@ def has_downloadable(apps: list, activation_type: str) -> bool:
 
 
 def effective_method_str(activation_type: str, adobe_method: str, sheets_method: str) -> str:
-    """Devuelve el método a registrar en Sheets considerando Adobe."""
+    """Devuelve el método a registrar en el backend considerando Adobe."""
     if activation_type == "adobe_full_pack":
         return "adobe_full_pack"
     if adobe_method:

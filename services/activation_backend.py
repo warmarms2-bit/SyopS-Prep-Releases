@@ -2,8 +2,8 @@
 
 Define el contrato que un backend debe cumplir para poder usarse con el
 diálogo de activación (ui/dialogs_activation.py). El backend concreto de
-SyopS (SheetsReporter → Google Apps Script) implementa esta interfaz, pero
-cualquier otro backend (otra hoja, una API propia, etc.) puede hacerlo.
+SyopS implementa esta interfaz, pero cualquier otro backend (API propia,
+etc.) puede hacerlo.
 
 Con esto, la capa de activación deja de depender del backend concreto y se
 puede reutilizar en otra app cambiando solo la implementación.

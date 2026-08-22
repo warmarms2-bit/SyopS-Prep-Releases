@@ -29,7 +29,7 @@ NONCE_LENGTH = 4
 HASH_LENGTH = 6
 
 # Vida útil de un código de activación desde su generación (en minutos).
-# Debe coincidir con CODE_LIFETIME_MINUTES de google_apps_script.js.
+# Debe coincidir con el valor configurado en el backend.
 CODE_LIFETIME_MINUTES = 8
 
 
@@ -264,7 +264,7 @@ def is_activated(syops_dir: Path, client_id: str, hwid: str = None,
     """
     Comprueba si hay una activación guardada válida para este equipo.
 
-    La autoridad de activación es el backend (Google Sheets): la app solo
+    La autoridad de activación es el backend: la app solo
     guarda localmente un código que el servidor ya confirmó. Por eso esta
     verificación NO requiere el secret (HMAC): se limita a validar que el
     estado local exista, corresponda a este equipo y no esté usado/expirado.

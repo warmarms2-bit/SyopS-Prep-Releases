@@ -442,7 +442,7 @@
     "codigo_usado": "Este código ya fue utilizado. Solicita uno nuevo por WhatsApp.",
     "codigo_otro_equipo": "Este código está vinculado a otro equipo. Solicita uno nuevo para este equipo.",
     "codigo_expirado": "Este código expiró. Solicita uno nuevo por WhatsApp.",
-    "codigo_no_en_sheets": "Este código no está registrado. Verificá que el operador lo haya generado en la hoja de Sheets.",
+    "codigo_no_en_sheets": "Este código no está registrado. Verificá que el operador lo haya generado correctamente.",
     "verificando": "Verificando con el servidor...",
     "verificando_tiempo": "Verificando con el servidor... ({segundos}s)",
     "sin_conexion": "No se pudo verificar el código con el servidor. Comprobá tu conexión a internet e intentá de nuevo.",
