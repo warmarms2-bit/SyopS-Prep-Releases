@@ -74,7 +74,7 @@ def _app_tools_for_app(app: str, sheet_items: list = None) -> list:
     Cada ítem: {name, url, doc?, required?, source}
     """
     # ── Modo hoja: leer de apps_destino ──────────────────────────────
-    if sheet_items is not None:
+    if sheet_items:
         return _tools_from_sheet(app, sheet_items)
 
     # ── Modo offline (fallback hardcode) ─────────────────────────────
