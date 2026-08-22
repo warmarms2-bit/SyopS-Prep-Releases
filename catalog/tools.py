@@ -144,30 +144,50 @@ def _app_tools_for_app(app: str, sheet_items: list = None) -> list:
 def _tools_from_sheet(app: str, items: list) -> list:
     """Arma tools para ``app`` desde la hoja Links (columna apps_destino).
 
-    Lee cada fila con ``kind=tool``, parsea ``apps_destino`` (comma-separated)
-    y si ``app`` está en esa lista, agrega la tool al resultado.
+    Lee cada fila (todas son kind=tool porque get_tools_map ya filtra),
+    parsea ``apps_destino`` (comma-separated) y si ``app`` está en esa
+    lista, agrega la tool al resultado.
     """
     import re
     tools = []
     for row in items:
         if not isinstance(row, dict):
             continue
-        kind = (row.get("kind") or "").strip().lower()
-        if kind != "tool":
-            continue
         destino_raw = (row.get("apps_destino") or "").strip()
         if not destino_raw:
             continue
         destinos = {d.strip().casefold() for d in re.split(r",\s*", destino_raw) if d.strip()}
         if app.casefold() in destinos:
+            metodos_raw = (row.get("metodos") or "").strip()
             tools.append({
-                "name": (row.get("nombre") or "").strip(),
+                "name": (row.get("name") or row.get("nombre") or "").strip(),
                 "url": (row.get("url") or "").strip(),
                 "doc": "",
                 "required": True,
                 "source": "sheet",
+                "metodos": metodos_raw,
             })
     return tools
+
+
+def sheet_tool_metodos(sheet_items: list, tool_name: str) -> list:
+    """Devuelve la lista de métodos de una tool desde la hoja.
+
+    Busca en ``metodo_destinos`` primero, fallback a ``metodos``.
+    Si la tool no está en la hoja o el campo está vacío, devuelve [].
+    """
+    import re
+    for row in sheet_items:
+        if not isinstance(row, dict):
+            continue
+        name = (row.get("name") or row.get("nombre") or "").strip()
+        if name != tool_name:
+            continue
+        metodos_raw = (row.get("metodos") or "").strip()
+        if not metodos_raw:
+            return []
+        return [m.strip() for m in re.split(r",\s*", metodos_raw) if m.strip()]
+    return []
 
 
 def _all_app_tools(sheet_items: list = None) -> list:
@@ -189,9 +209,6 @@ def _apps_with_tools(sheet_items: list = None) -> set:
         apps = set()
         for row in sheet_items:
             if not isinstance(row, dict):
-                continue
-            kind = (row.get("kind") or "").strip().lower()
-            if kind != "tool":
                 continue
             destino_raw = (row.get("apps_destino") or "").strip()
             if not destino_raw:

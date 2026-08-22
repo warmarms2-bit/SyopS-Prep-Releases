@@ -127,7 +127,23 @@ def apply_update(timeout: int = 120) -> tuple[bool, str]:
     try:
         archive = tmp / ("main.zip" if IS_WIN else "main.tar.gz")
         with urllib.request.urlopen(bundle_url, timeout=timeout) as resp:
-            archive.write_bytes(resp.read())
+            total = int(resp.headers.get("Content-Length", 0))
+            chunk_size = 1024 * 1024
+            downloaded = 0
+            with open(archive, "wb") as f:
+                while True:
+                    chunk = resp.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total:
+                        pct = downloaded * 100 // total
+                        print(f"\r  ▸ bajando pepa {pct}%   ", end="", flush=True)
+                    else:
+                        mb = downloaded / (1024 * 1024)
+                        print(f"\r  ▸ bajando pepa {mb:.1f} MB   ", end="", flush=True)
+            print()
         if not archive.stat().st_size:
             return False, "La descarga de la actualización quedó vacía."
 

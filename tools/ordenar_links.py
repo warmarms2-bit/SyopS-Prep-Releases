@@ -49,11 +49,12 @@ _SPECIAL_CAT = {
 }
 
 HEADERS = ["nombre", "metodo", "plataforma", "url", "resolver",
-           "categoria", "categoria_seleccion", "kind", "apps_destino"]
+           "categoria", "categoria_seleccion", "kind", "apps_destino",
+           "metodos"]
 
 _SERVER = (os.environ.get("SYOPS_LINK_SERVER", "").strip()
            or os.environ.get("SYOPS_SELLER_URL", "").strip()
-           or "https://script.google.com/macros/s/AKfycbw1xNAg0bvaG3vkhI1lRVD4c21aiCXgTobF1WjcD0tVh6uJFq9jyQngjzqHqtr1_9Gc/exec").strip()
+           or "https://script.google.com/macros/s/AKfycbw6UrjoZCtUWyb2BxQskruTQRowGIv2dXuoHrupio1-UFN7ZLq-KIctzHjZCv0ikcSo/exec").strip()
 
 _UA = {"User-Agent": "SyopsWizard-tools/1.3"}
 
@@ -190,7 +191,8 @@ def ordenar(links: list) -> tuple:
 
     # ── Auto-fill: kind=tool para Herramientas + Office helpers,
     #    categoria_seleccion desde APP_CATEGORY,
-    #    apps_destino desde APP_TOOLS (reverso) ─────────────────────
+    #    apps_destino desde APP_TOOLS (reverso),
+    #    metodos desde ADOBE_TOOLS.for_methods ─────────────────────
     try:
         from catalog.tools import APP_TOOLS as _ATOOLS
     except ImportError:
@@ -199,6 +201,11 @@ def ordenar(links: list) -> tuple:
     for _app, _tools in _ATOOLS.items():
         for _t in _tools:
             _tool_to_apps.setdefault(_t.get("name", ""), []).append(_app)
+
+    try:
+        from catalog.adobe import ADOBE_TOOLS as _ADOBE_TOOLS
+    except ImportError:
+        _ADOBE_TOOLS = {}
 
     OFFICE_TOOLS = {"Microsoft AutoUpdate (MAU)",
                     "Microsoft Office LTSC 2024 VL Serializer"}
@@ -218,6 +225,10 @@ def ordenar(links: list) -> tuple:
                     except ImportError:
                         pass
                 r["apps_destino"] = ", ".join(apps) if apps else ""
+            # Auto-fill metodos desde ADOBE_TOOLS para tools Adobe
+            if not _clean(r.get("metodos")) and nombre in _ADOBE_TOOLS:
+                methods = _ADOBE_TOOLS[nombre].get("for_methods", [])
+                r["metodos"] = ", ".join(methods) if methods else ""
         else:
             sel = _clean(r.get("categoria_seleccion"))
             if not sel:

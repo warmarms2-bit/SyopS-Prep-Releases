@@ -164,6 +164,10 @@ DOWNLOAD_METHODS = {
     "Microsoft Office LTSC 2024 VL Serializer": "http",
 
     "Blender": "http",
+
+    # Parche de activación Adobe: se baja SOLO si el cliente ya tiene apps
+    # oficiales instaladas (respuesta "sí" a la pregunta de Adobe).
+    "GenP": "http",
 }
 INSTALL_QUESTIONS = {
     "adobe_oficiales": {

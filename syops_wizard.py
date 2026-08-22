@@ -778,9 +778,13 @@ class Wizard:
 
     def _show_method_sections(self):
         """Método de descarga, apps Adobe con versión y tools (como la UI)."""
-        from catalog.adobe_helpers import _adobe_best_link
+        from catalog.adobe_helpers import _adobe_best_link, _adobe_tools_for_method
         from catalog.tools import TOOL_APPS, _app_tools_for_app
         from services.seleccion_logic import describe_method
+        from services.download_link_provider import fetch_tools_map
+        from app_config import SHEETS_URL
+
+        sheet_items = fetch_tools_map(SHEETS_URL) if SHEETS_URL else []
 
         app_methods = {}
         for a in self.selected_apps:
@@ -793,8 +797,9 @@ class Wizard:
                     app_methods[a] = self.adobe_method or "torrent"
             else:
                 app_methods[a] = _method_label(a)
-        if self.office_sub_apps:
-            app_methods["Office"] = "http"
+        for office_app in (self.office_sub_apps or []):
+            if office_app not in app_methods:
+                app_methods[office_app] = "http"
 
         sections = []
         tools = {app: m for app, m in app_methods.items() if app in TOOL_APPS}
@@ -838,7 +843,8 @@ class Wizard:
             # Solo las tools REALES del método elegido (Sentinel, Pop-Up
             # Blocker...). Los 'Patchers por app' (ADOBE_PATCHERS_SICE) NO
             # aplican a AIO: el patcher va incluido en el paquete.
-            tool_names = [name for name, _ in _adobe_tools_for_method(self.adobe_method)]
+            tool_names = [name for name, _ in _adobe_tools_for_method(
+                self.adobe_method, sheet_items)]
             if tool_names:
                 sections.append(_("resumen.tools_linea", tools=", ".join(tool_names)))
 
@@ -851,15 +857,17 @@ class Wizard:
             for app, m in tools.items():
                 sections.append(f"  • {app}")
 
+        # Tools por app (non-Adobe): deduplicar entre apps
         app_tools = {}
+        seen_tools = set()
         for app in app_methods:
-            # Las apps Adobe no llevan tools por app: si hay método, las
-            # tools reales del método ya se listaron arriba; si no hay
-            # método (Windows/GenP) se descargan frescas por torrent.
             if app in ADOBE_APPS:
                 continue
-            for tool in _app_tools_for_app(app):
-                app_tools.setdefault(app, []).append(tool.get("name", tool))
+            for tool in _app_tools_for_app(app, sheet_items):
+                tool_name = tool.get("name", tool) if isinstance(tool, dict) else tool
+                if tool_name not in seen_tools:
+                    seen_tools.add(tool_name)
+                    app_tools.setdefault(app, []).append(tool_name)
         if app_tools:
             sections.append(_("resumen.tools_por_app_titulo"))
             for app in sorted(app_tools):
@@ -1144,6 +1152,7 @@ class Wizard:
         for t in failed:
             print(_c(f"  ✗ {t.name}: {t.error_msg or 'error desconocido'} "
                      f"[url={t.url_or_magnet}]", _RD))
+        print(_c(f"  Archivos en: {output_dir}", _GR))
         return len(tasks) - len(failed)
 
     # ── Paso 7: final ──────────────────────────────────────────────
@@ -1151,7 +1160,7 @@ class Wizard:
         _sep()
         print(_c(_B + "  ¡LISTO!", _GR))
         _sep()
-        print("  Tus archivos quedaron en las carpetas indicadas.")
+        print(f"  Tus archivos están en: {output or Path.cwd()}")
         print("  Seguí las instrucciones de instalación (instrucciones.txt).")
         if self.adobe_patched:
             print(f"  Adobe patched (GenP): {', '.join(self.adobe_patched)}")

@@ -186,7 +186,8 @@ def plan_downloads(downloadable: list, output_dir: Path,
         for app in [a for a in downloadable if a in ADOBE_APPS]:
             task, warn = _task_for_app(app, adobe_metodo, output_dir)
             (tasks.append(task) if task else warnings.append(warn))
-        for tool_name, tool_link in _adobe_tools_for_method(adobe_metodo):
+        for tool_name, tool_link in _adobe_tools_for_method(adobe_metodo,
+                                                            sheet_items):
             if tool_link:
                 tasks.append(DownloadTask(tool_name, "http",
                                           _pixeldrain_direct_url(tool_link),
@@ -211,7 +212,8 @@ def plan_downloads(downloadable: list, output_dir: Path,
     # con las tools del método Adobe y las apps ya descargadas.
     seen_tools = set(downloadable)
     if adobe_method:
-        seen_tools.update(name for name, _ in _adobe_tools_for_method(adobe_method))
+        seen_tools.update(name for name, _ in _adobe_tools_for_method(adobe_method,
+                                                                      sheet_items))
     for app in downloadable:
         if app in ADOBE_APPS:
             continue
@@ -259,7 +261,8 @@ def _plan_via_server(downloadable, output_dir, adobe_method, adobe_fullpack,
             task, warn = _provider_task(provider, "adobe", app, adobe_metodo,
                                         platform, output_dir, 0, 4 * 1024 ** 3)
             (tasks.append(task) if task else warnings.append(warn))
-        for tool_name, _link in _adobe_tools_for_method(adobe_metodo):
+        for tool_name, _link in _adobe_tools_for_method(adobe_metodo,
+                                                        sheet_items):
             task, warn = _provider_task(provider, "tool", tool_name,
                                         adobe_metodo, platform,
                                         output_dir, 1, 2 * 1024 ** 3)
@@ -275,7 +278,8 @@ def _plan_via_server(downloadable, output_dir, adobe_method, adobe_fullpack,
 
     seen_tools = set(downloadable)
     if adobe_method:
-        seen_tools.update(name for name, _ in _adobe_tools_for_method(adobe_method))
+        seen_tools.update(name for name, _ in _adobe_tools_for_method(adobe_method,
+                                                                      sheet_items))
     for app in downloadable:
         if app in ADOBE_APPS:
             continue

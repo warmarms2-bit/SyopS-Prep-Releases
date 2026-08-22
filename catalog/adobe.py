@@ -289,17 +289,17 @@ ADOBE_TOOLS = {
     },
     "AntiCC v1.7": {
         "url": "",
-        "for_methods": ["multilang_sice", "activation_tool"],
+        "for_methods": ["aio_macked", "aio_sice", "multilang_sice", "activation_tool"],
         "required": True,
     },
     "Adobe ACC Runtime": {
         "url": "",
-        "for_methods": ["multilang_sice", "activation_tool"],
+        "for_methods": ["aio_macked", "aio_sice", "multilang_sice", "activation_tool"],
         "required": True,
     },
     "Adobe Cleaner Tool": {
         "url": "",
-        "for_methods": ["multilang_sice", "activation_tool"],
+        "for_methods": ["aio_macked", "aio_sice", "multilang_sice", "activation_tool"],
         "required": True,
     },
     "Adobe Downloader": {

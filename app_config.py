@@ -1,4 +1,4 @@
-APP_VERSION = "1.3.26"
+APP_VERSION = "1.3.30"
 WHATSAPP_DISPLAY = "+51 955 242 837"
 
 # ── CONFIGURACION GENERAL ─────────────────────────────────────────
@@ -34,19 +34,49 @@ from pathlib import Path
 def _resolve_syops_dir() -> Path:
     """Directorio de estado/descargas.
 
-    En Windows se intenta C:\\SYOPS (compartido con la UI); si la raíz del
-    disco no es escribible (usuario sin permisos de admin), se cae a un
-    directorio del usuario para no romper el wizard con PermissionError.
+    Busca el mejor lugar automáticamente:
+    1. Variable de entorno SYOPS_DIR (override manual).
+    2. Directorio existente con datos previos.
+    3. ~/SYOPS (primera vez).
     """
+    env = os.environ.get("SYOPS_DIR", "").strip()
+    if env:
+        p = Path(env)
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
     if sys.platform == "win32":
-        candidate = Path(f"{os.environ.get('SystemDrive', 'C:')}/SYOPS")
+        candidates = [
+            Path(f"{os.environ.get('SystemDrive', 'C:')}/SYOPS"),
+            Path(os.environ.get("LOCALAPPDATA", "")) / "SYOPS",
+            Path.home() / "SYOPS",
+        ]
+    else:
+        candidates = [
+            Path.home() / "SYOPS",
+            Path.home() / "Downloads" / "SyopS-Prep",
+            Path.home() / "Desktop" / "SyopS-Prep",
+        ]
+
+    for c in candidates:
         try:
-            candidate.mkdir(parents=True, exist_ok=True)
-            return candidate
+            if c.exists():
+                return c
         except OSError:
-            base = os.environ.get("LOCALAPPDATA") or str(Path.home())
-            return Path(base) / "SYOPS"
-    return Path(os.path.expanduser("~/SYOPS"))
+            continue
+
+    primary = candidates[0]
+    try:
+        primary.mkdir(parents=True, exist_ok=True)
+        return primary
+    except OSError:
+        for c in candidates[1:]:
+            try:
+                c.mkdir(parents=True, exist_ok=True)
+                return c
+            except OSError:
+                continue
+    return Path.home() / "SYOPS"
 
 
 SYOPS_DIR = _resolve_syops_dir()
@@ -58,11 +88,11 @@ UPDATE_CHECK_URL = os.environ.get(
 )
 SHEETS_URL = os.environ.get(
     "SYOPS_SHEETS_URL",
-    "https://script.google.com/macros/s/AKfycbw1xNAg0bvaG3vkhI1lRVD4c21aiCXgTobF1WjcD0tVh6uJFq9jyQngjzqHqtr1_9Gc/exec",
+    "https://script.google.com/macros/s/AKfycbw6UrjoZCtUWyb2BxQskruTQRowGIv2dXuoHrupio1-UFN7ZLq-KIctzHjZCv0ikcSo/exec",
 )
 LINK_SERVER_URL = os.environ.get(
     "SYOPS_LINK_SERVER",
-    "https://script.google.com/macros/s/AKfycbw1xNAg0bvaG3vkhI1lRVD4c21aiCXgTobF1WjcD0tVh6uJFq9jyQngjzqHqtr1_9Gc/exec",
+    "https://script.google.com/macros/s/AKfycbw6UrjoZCtUWyb2BxQskruTQRowGIv2dXuoHrupio1-UFN7ZLq-KIctzHjZCv0ikcSo/exec",
 )
 
 # ── RED: TORRENT (DHT nodes + trackers públicos) ──────────────────

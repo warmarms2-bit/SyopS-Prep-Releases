@@ -25,7 +25,7 @@ from catalog.urls import (
 )
 from catalog.tools import (
     COMBO_TOOLS, TOOL_APPS, _expand_apps, TOOL_DESCS, APP_TOOLS,
-    _app_tools_for_app, _all_app_tools, _apps_with_tools,
+    _app_tools_for_app, _all_app_tools, _apps_with_tools, sheet_tool_metodos,
 )
 
 __all__ = [
@@ -42,5 +42,5 @@ __all__ = [
     "_TORRENT_MAGNETS_MAC", "_TORRENT_MAGNETS_WIN", "TORRENT_MAGNETS",
     "TORBOX_LINKS", "SWISSTRANSFER_URLS",
     "COMBO_TOOLS", "TOOL_APPS", "_expand_apps", "TOOL_DESCS", "APP_TOOLS",
-    "_app_tools_for_app", "_all_app_tools", "_apps_with_tools",
+    "_app_tools_for_app", "_all_app_tools", "_apps_with_tools", "sheet_tool_metodos",
 ]

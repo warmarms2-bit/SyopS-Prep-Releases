@@ -1,6 +1,14 @@
-# El wizard del cliente es stdlib puro: NO necesita instalar dependencias.
-# (Las dependencias de resolución —PySide6, cloudscraper, libtorrent— viven
-# del lado del servidor/proveedor y no se distribuyen en esta variante.)
+# Dependencias opcionales del wizard.
+# El núcleo del wizard es stdlib puro (arranca sin nada de esto).
 
-# Solo para desarrollo/pruebas del repositorio:
-pytest>=7.0
+# Torrents (magnet links)
+libtorrent>=2.0.13
+
+# Resolución Cloudflare de AkiraBox/Appstorrent (worker subprocess con ventana)
+PySide6
+
+# IUAM de Cloudflare sin ventana (se intenta antes del worker)
+cloudscraper
+
+# Tests
+pytest
