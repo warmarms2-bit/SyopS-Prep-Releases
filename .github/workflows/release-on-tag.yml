@@ -1,16 +1,11 @@
 name: Release on tag
 # Publica una GitHub Release (instalador .dmg + portable Windows .exe) al
-# pushear un tag vX.Y.Z. Automatiza el flujo para que cada actualización deje
-# los binarios subidos sin pasos manuales:
-#   1. compila el portable de Windows (.exe) en un runner de Windows,
-#   2. sube el .exe como artifact y además lo commitea al repo (main),
-#   3. crea/actualiza la GitHub Release vX.Y.Z con los binarios (.dmg + .exe).
+# pushear un tag vX.Y.Z.
 #
-# NOTA: el sync del release borra dist/portable/syops-portable.exe del repo
-# (el .exe solo se compila en Windows, no vive en el dev), así que el job
-# "publish" NO puede tomar el .exe del checkout del tag: lo recibe del job
-# "build-windows" vía artifact. Los demás binarios (dmg, mac, thin) sí están
-# commiteados en el tag.
+# Desde 1.3.91 el repo público es SOLO distribución de binarios (no contiene
+# código fuente). Los binarios ya están en dist/ del repo público (los copia
+# el release pipeline desde el dev, y el .exe se genera en el dev/build).
+# Este workflow solo arma la Release con esos binarios ya presentes.
 #
 # El tag lo crea make_release.sh (release de un paso) al publicar una versión.
 on:
@@ -22,63 +17,11 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
-    name: Build portable Windows
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Instalar PyInstaller + libtorrent + cloudscraper
-        run: pip install --quiet pyinstaller libtorrent cloudscraper
-
-      - name: Compilar portable (.exe)
-        shell: bash
-        run: |
-          python -m PyInstaller --onefile --console \
-            --name syops-portable \
-            --distpath dist/portable \
-            --workpath build --specpath tools \
-            --add-data "$(cygpath -w "$PWD")/locale;locale" \
-            --hidden-import libtorrent \
-            --collect-all libtorrent \
-            --icon "$(cygpath -w "$PWD")/assets/icons/syops_icon.ico" \
-            --collect-submodules catalog \
-            --collect-submodules services \
-            --collect-submodules system \
-            --collect-submodules app_flow \
-            syops_wizard.py
-
-      - name: Subir .exe como artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: syops-portable-exe
-          path: dist/portable/syops-portable.exe
-
-      - name: Commit del .exe al repo (main)
-        shell: bash
-        run: |
-          git config user.name "ci-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add -f dist/portable/syops-portable.exe
-          git commit -m "chore: build portable Windows" || echo "sin cambios"
-          git push origin HEAD:main || echo "push del .exe falló (no crítico para la Release)"
-
   publish:
     name: Publish Release
-    needs: build-windows
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Descargar .exe compilado
-        uses: actions/download-artifact@v4
-        with:
-          name: syops-portable-exe
-          path: dist/portable
 
       - name: Publicar binarios como Release
         env:
@@ -86,11 +29,11 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
-          ls -la dist/ dist/portable/
+          echo "Binarios disponibles en dist/:"
+          ls -la dist/ dist/portable/ || true
           # Si ya existe un release/tag con esa versión, lo re-crea (para re-publicar)
           gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
-          # Desde 1.3.89: solo instalador (.dmg) + portable Windows (.exe).
-          # El portable de macOS, thin y oneliner quedan solo en el dev.
+          # Solo instalador (.dmg) + portable Windows (.exe)
           gh release create "$TAG" \
             dist/portable/SyopS_Prep.dmg \
             dist/portable/syops-portable.exe \
