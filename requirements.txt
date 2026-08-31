@@ -1,0 +1,14 @@
+# Dependencias opcionales del wizard.
+# El núcleo del wizard es stdlib puro (arranca sin nada de esto).
+
+# Torrents (magnet links)
+libtorrent>=2.0.13
+
+# Resolución Cloudflare de AkiraBox/Appstorrent (worker subprocess con ventana)
+PySide6
+
+# IUAM de Cloudflare sin ventana (se intenta antes del worker)
+cloudscraper
+
+# Tests
+pytest

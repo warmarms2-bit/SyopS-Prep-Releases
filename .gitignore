@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# Estado / runtime (no debe subirse)
+config/
+*.activated
+*.log
+
+# Builds
+dist/
+build/
+*.spec
+
+# Secretos de entorno (nunca commitear)
+.env
+.env.*
+resolver_pack/
+
+# Backend / datos internos (no distribuir: protegen los links y el AppScript)
+google_apps_script.js
+links_ordenado.csv
+docs/auto-update.md
+# El servidor de links Tier 2 NO se distribuye; la UI web (web_ui.py) sí
+server/syops_server.py
+tools/check_catalog_links.py
+tools/exportar_links.py
+tools/ordenar_links.py
+tools/renovar_links.py
+
+# Residuos del entorno de desarrollo (nunca distribuir)
+.local/
+.rustup/

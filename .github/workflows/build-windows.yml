@@ -1,0 +1,59 @@
+name: Build portable Windows
+# Compila el binario portable (.exe) de SyopS Prep en un runner de Windows
+# (PyInstaller no cruza plataformas: el .exe hay que construirlo en Windows).
+#
+# Disparo:
+#   - manual (workflow_dispatch): botón "Run workflow" en Actions.
+#   - (NO se dispara solo con push a main: el commit del .exe de vuelta al repo
+#     provocaría un bucle infinito de builds).
+#
+# El .exe resultante se commitea en dist/portable/syops-portable.exe.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar PyInstaller + libtorrent + cloudscraper
+        run: pip install --quiet pyinstaller libtorrent cloudscraper
+
+      - name: Compilar portable (.exe)
+        shell: bash
+        run: |
+          python -m PyInstaller --onefile --console \
+            --name syops-portable \
+            --distpath dist/portable \
+            --workpath build --specpath tools \
+            --add-data "$(cygpath -w "$PWD")/locale;locale" \
+            --hidden-import libtorrent \
+            --collect-all libtorrent \
+            --icon "$(cygpath -w "$PWD")/assets/icons/syops_icon.ico" \
+            --collect-submodules catalog \
+            --collect-submodules services \
+            --collect-submodules system \
+            --collect-submodules app_flow \
+            syops_wizard.py
+
+      - name: Commit del .exe al repo
+        shell: bash
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "actions@users.noreply.github.com"
+          # El .exe recién compilado ya está trackeado (modificado) y el remote
+          # pudo avanzar: stash → rebase → pop, y recién ahí commit+push.
+          git stash 2>/dev/null || true
+          git pull --rebase origin main
+          git stash pop 2>/dev/null || true
+          git add -f dist/portable/syops-portable.exe
+          git commit -m "chore: build portable Windows" || echo "sin cambios"
+          git push
