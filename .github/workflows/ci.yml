@@ -1,24 +1,36 @@
 name: CI (bundle público)
+# Desde 1.3.91 el repo público es SOLO distribución de binarios (no contiene
+# código fuente). Este CI verifica que el árbol quede como corresponde:
+# binarios presentes, sin código fuente, y sin secretos/rutas del dev.
 on:
   push:
     branches: [main]
   pull_request:
 
 jobs:
-  tests:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install cloudscraper
-      - name: Compila (sintaxis de todo el bundle)
-        run: python -m compileall -q .
-      - name: Smoke import (el bundle debe importar sin resolver_pack)
-        run: python -c "import syops_wizard; import app_config; print('import OK')"
-        env:
-          SYOPS_NO_CATALOG_FETCH: "1"
+
+      - name: Verificar binarios presentes
+        run: |
+          test -f dist/portable/SyopS_Prep.dmg || (echo "FALTA dist/portable/SyopS_Prep.dmg" && exit 1)
+          echo "✓ dmg presente"
+
+      - name: Verificar que NO hay código fuente en el público
+        run: |
+          for f in syops_wizard.py syops_cli.py services/__init__.py web/index.html; do
+            if [ -e "$f" ]; then echo "ERROR: código fuente presente en el público: $f"; exit 1; fi
+          done
+          echo "✓ sin código fuente (solo binarios + docs + README)"
+
+      - name: Verificar docs y README
+        run: |
+          test -f README.md || (echo "FALTA README.md" && exit 1)
+          test -f docs/INSTALACION.md || (echo "FALTA docs/INSTALACION.md" && exit 1)
+          echo "✓ README y docs presentes"
+
       - name: Scan rutas del dev / secretos
         run: |
-          ! grep -rInE "sk-[A-Za-z0-9]{20,}|/Users/eze" . --include=*.py --include=*.sh --exclude-dir=.git || exit 1
+          ! grep -rInE "sk-[A-Za-z0-9]{20,}|/Users/eze|SELLER_KEY|LINK_SERVER_URL=" . --exclude-dir=.git || exit 1
