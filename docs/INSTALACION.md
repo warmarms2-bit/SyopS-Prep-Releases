@@ -9,7 +9,7 @@ instalar nada** (el portable ya trae todo incluido).
 
 ### macOS
 
-1. Descargá [`dist/portable/SyopS_Prep.dmg`](dist/portable/SyopS_Prep.dmg).
+1. Descargá [`SyopS_Prep.dmg`](https://github.com/warmarms2-bit/SyopS-Prep-Releases/releases/latest/download/SyopS_Prep.dmg).
 2. Abrí el `.dmg` y hacé doble clic en **"SyopS Prep.app"**.
 
 > ⚠ **Primera vez:** como es una app sin firmar descargada de internet, macOS
@@ -18,7 +18,7 @@ instalar nada** (el portable ya trae todo incluido).
 
 ### Windows
 
-1. Descargá [`dist/portable/syops-portable.exe`](dist/portable/syops-portable.exe).
+1. Descargá [`syops-portable.exe`](https://github.com/warmarms2-bit/SyopS-Prep-Releases/releases/latest/download/syops-portable.exe).
 2. Hacé doble clic y listo.
 
 > ⚠ Si Windows Defender lo marca, agregá la carpeta de descarga a la whitelist
